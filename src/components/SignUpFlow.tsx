@@ -5,10 +5,13 @@ import { TransitionPopup } from './TransitionPopup';
 
 interface SignUpFlowProps {
   onComplete: () => void;
+  initialStep?: number;
+  endStep?: number;
+  mode?: 'signup' | 'edit';
 }
 
-export function SignUpFlow({ onComplete }: SignUpFlowProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signup' }: SignUpFlowProps) {
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [showTransition, setShowTransition] = useState(false);
   const [transitionConfig, setTransitionConfig] = useState<{
     lines: string[];
@@ -24,6 +27,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   const [expandedMusicPerforming, setExpandedMusicPerforming] = useState(false);
   const [expandedMusicListening, setExpandedMusicListening] = useState(false);
   const [expandedMoviesTV, setExpandedMoviesTV] = useState(false);
+  const [expandedGames, setExpandedGames] = useState(false);
   const [showDesireModal, setShowDesireModal] = useState(false);
   const [selectedDesire, setSelectedDesire] = useState<{ field: string, value: string } | null>(null);
   const [desireHoldTimeout, setDesireHoldTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -108,14 +112,16 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
 
   // Show initial welcome popup
   useEffect(() => {
-    setTransitionConfig({
-      lines: [
-        "Let's get started! ✨",
-        "First: what is your name, and tell us a little bit about yourself"
-      ],
-      nextStep: 0
-    });
-    setShowTransition(true);
+    if (mode === 'signup' && currentStep === 0) {
+      setTransitionConfig({
+        lines: [
+          "Let's get started! ✨",
+          "First: what is your name, and tell us a little bit about yourself"
+        ],
+        nextStep: 0
+      });
+      setShowTransition(true);
+    }
   }, []); // Only run once on mount
 
   const steps = [
@@ -123,10 +129,9 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
     'Identity',
     'Personal Info',
     'Languages',
-    'Age & Height',
+    'Age, Height & Location',
     'Preferences',
     'Relationship',
-    'Distance',
     'Interests',
     'Food, Music & Entertainment',
     'Dealbreakers',
@@ -164,9 +169,22 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleNext = () => {
+    const targetEnd = endStep !== undefined ? endStep : 10;
+    
+    if (currentStep >= targetEnd) {
+      onComplete();
+      return;
+    }
+
     // Determine if we need a transition popup
     let transitionNeeded = false;
     let config: typeof transitionConfig = { lines: [] };
+
+    // Skip transitions if in edit mode (optional, but cleaner for quick edits)
+    if (mode === 'edit') {
+       setCurrentStep(currentStep + 1);
+       return;
+    }
 
     // Step 0 → 1: After name/about, going to personal info
     if (currentStep === 0) {
@@ -190,41 +208,41 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
         nextStep: 3
       };
     }
-    // Step 7 → 8: Going to interests (after distance)
-    else if (currentStep === 7) {
+    // Step 6 → 7: Going to interests (Relationship -> Interests)
+    else if (currentStep === 6) {
       transitionNeeded = true;
       config = {
         lines: [
           "Awesome! Now then, let's get into the details about your personality ✨",
           "💡 Tip: Hold any interest to mark it as mandatory or a dealbreaker"
         ],
-        nextStep: 8
+        nextStep: 7
       };
     }
-    // Step 9 → 10: Going to dealbreakers
-    else if (currentStep === 9) {
+    // Step 8 → 9: Going to dealbreakers (Food/Music -> Dealbreakers)
+    else if (currentStep === 8) {
       transitionNeeded = true;
       config = {
         lines: [
           "Almost there! 🎯",
           "Tell us some things that would be unacceptable ⚠️"
         ],
-        nextStep: 10
+        nextStep: 9
       };
     }
-    // Step 10 → 11: Going to desires
-    else if (currentStep === 10) {
+    // Step 9 → 10: Going to desires (Dealbreakers -> What you want)
+    else if (currentStep === 9) {
       transitionNeeded = true;
       config = {
         lines: [
           "You made it to the final page! 🎊",
           "These next options don't affect your compatibility, but they do let your potential interests know what you're looking for"
         ],
-        nextStep: 11
+        nextStep: 10
       };
     }
-    // Step 11 → Complete: Final message
-    else if (currentStep === 11) {
+    // Step 10 → Complete: Final message
+    else if (currentStep === 10) {
       transitionNeeded = true;
       config = {
         lines: [
@@ -259,7 +277,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
+    // Prevent going back before the initial step (important for edit mode)
+    if (currentStep > initialStep) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -401,7 +420,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleInterestMouseDown = (field: string, value: string) => {
-    if (value === 'Other') return;
+    if (value === 'Other' || value.endsWith(':Other') || value.endsWith(': Other')) return;
     const timeout = setTimeout(() => {
       setSelectedInterest({ field, value });
       setShowInterestModal(true);
@@ -417,7 +436,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleInterestSpecialAction = (action: 'mandatory' | 'dealbreaker') => {
-    if (!selectedInterest || selectedInterest.value === 'Other') return;
+    if (!selectedInterest || selectedInterest.value === 'Other' || selectedInterest.value.endsWith(':Other') || selectedInterest.value.endsWith(': Other')) return;
 
     const { field, value } = selectedInterest;
     
@@ -502,46 +521,55 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
 
   const updateHobbySubcategory = (hobby: string, subcategory: string) => {
     setFormData(prev => {
-      const currentHobbies = prev.hobbies[hobby] || [];
-      const isRemoving = currentHobbies.includes(subcategory);
+      // Create a shallow copy of the hobbies object to avoid mutation issues
+      const currentHobbiesMap = { ...prev.hobbies };
       
-      const updatedHobbies = isRemoving
-        ? currentHobbies.filter(s => s !== subcategory)
-        : [...currentHobbies, subcategory];
-        
-      const updated = {
-        ...prev,
-        hobbies: {
-          ...prev.hobbies,
-          [hobby]: updatedHobbies
-        }
-      };
-
-      if (isRemoving) {
-        // Clean up special arrays
-        const fullValue = `${hobby}: ${subcategory}`;
-        updated.priorityHobbies = prev.priorityHobbies.filter(h => h !== fullValue);
-        updated.dealbreakerHobbies = prev.dealbreakerHobbies.filter(h => h !== fullValue);
+      // Get the current array for this hobby category, default to empty array
+      const currentList = currentHobbiesMap[hobby] || [];
+      
+      // Check if item exists
+      const exists = currentList.includes(subcategory);
+      
+      let newList;
+      if (exists) {
+        // Remove item
+        newList = currentList.filter(item => item !== subcategory);
+      } else {
+        // Add item
+        newList = [...currentList, subcategory];
       }
       
-      return updated;
+      // Update the hobbies map with the new list
+      currentHobbiesMap[hobby] = newList;
+      
+      // Update special lists if removing
+      let updatedPriority = prev.priorityHobbies;
+      let updatedDealbreaker = prev.dealbreakerHobbies;
+      
+      if (exists) {
+         const keyToRemove = `${hobby}:${subcategory}`;
+         updatedPriority = prev.priorityHobbies.filter(h => h !== keyToRemove);
+         updatedDealbreaker = prev.dealbreakerHobbies.filter(h => h !== keyToRemove);
+      }
+      
+      return {
+        ...prev,
+        hobbies: currentHobbiesMap,
+        priorityHobbies: updatedPriority,
+        dealbreakerHobbies: updatedDealbreaker
+      };
     });
   };
 
   const hobbyCategories = {
-    'Games': {
-      'Card Games': ['52 Cards/Standard Deck', 'Magic: The Gathering', 'Pokemon', 'Uno', 'Yu-Gi-Oh', 'Other'],
-      'Board Games': ['Classic', 'Cooperative', 'Modern', 'Party Games', 'Strategy', 'Other'],
-      'Video Games': ['Action', 'FPS', 'Horror', 'MMORPG', 'MOBA', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Other'],
-      'Other': ['Trivia', 'Verbal Games', 'Word Games', 'Other']
-    },
     'Sports (Watching)': ['Baseball', 'Basketball', 'Cricket', 'Football', 'Golf', 'Gymnastics', 'Hockey', 'Lacrosse', 'MMA', 'Motor Vehicle Racing', 'Olympics', 'Rugby', 'Soccer', 'Swimming', 'Tennis', 'Other'],
     'Sports (Playing)': ['Baseball', 'Basketball', 'Cricket', 'Cycling', 'Football', 'Golf', 'Gymnastics', 'Hockey', 'Lacrosse', 'Martial Arts', 'MMA', 'Olympics', 'Pickleball', 'Racquetball', 'Rugby', 'Running', 'Soccer', 'Swimming', 'Tennis', 'Yoga', 'Other'],
     'Outdoor': ['Beach Activities', 'Camping', 'Corn Hole', 'Hiking', 'Horse Shoes', 'Hunting', 'Kayaking', 'Outdoor Games', 'Rock Climbing', 'Skiing', 'Surfing', 'Other'],
-    'Creative': ['Crafts', 'Design', 'DIY Projects', 'Drawing', 'Painting', 'Photography', 'Social Media Content Creator', 'Writing', 'Other'],
+    'Creative': ['Crafts', 'Design', 'DIY Projects', 'Drawing', 'Painting', 'Photography', 'Social Media Content Creator', 'Teaching', 'Theater', 'Writing', 'Other'],
     'Learning': ['Documentaries', 'Higher Education', 'Languages', 'Museums', 'Online Courses', 'Podcasts', 'Reading', 'Social Media (YouTube/TikTok)', 'Other'],
     'Technology': ['AI/Tech News', 'Building PCs', 'Coding', 'Finance/Crypto', 'Gadgets', 'Gaming', 'Other'],
-    'Social': ['Church', 'Clubs', 'Dancing', 'Karaoke', 'Meetups', 'Networking', 'Volunteering', 'Other']
+    'Social': ['Church', 'Clubs', 'Dancing', 'Karaoke', 'Meetups', 'Networking', 'Volunteering', 'Other'],
+    'Pets': ['Dogs', 'Cats', 'Rodent(s)', 'Terrarium Pets', 'Aquarium Pets', 'Farm Animals', 'Other']
   };
 
   const canProceed = () => {
@@ -557,11 +585,10 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
         return formData.relationshipGoal.length > 0 && 
                formData.childrenPreference.length > 0 &&
                (!needsMarriage || formData.marriageDesire);
-      case 7: return true;
-      case 8: return Object.keys(formData.hobbies).length > 0;
-      case 9: return formData.favoriteFoods.length > 0 && (formData.musicPerforming.length > 0 || formData.musicListening.length > 0) && formData.moviesTV.length > 0;
+      case 7: return Object.keys(formData.hobbies).length > 0;
+      case 8: return formData.favoriteFoods.length > 0 && (formData.musicPerforming.length > 0 || formData.musicListening.length > 0) && formData.moviesTV.length > 0;
+      case 9: return true;
       case 10: return true;
-      case 11: return true;
       default: return false;
     }
   };
@@ -588,12 +615,14 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
               <p className="text-purple-600">Step {currentStep + 1} of {steps.length}</p>
               <h2 className="text-gray-900 mt-2">{steps[currentStep]}</h2>
             </div>
-            <button
-              onClick={handleNext}
-              className="px-6 py-2 text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              Skip
-            </button>
+            {mode !== 'edit' && (
+              <button
+                onClick={handleNext}
+                className="px-6 py-2 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Skip
+              </button>
+            )}
           </div>
         </div>
 
@@ -1043,38 +1072,70 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 4: Age & Height Preferences */}
+          {/* Step 4: Age, Height & Location */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-gray-900">Age Range Preference</label>
-                <p className="text-gray-600">Set your preferred age range</p>
-                
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="18"
-                    max="99"
-                    value={formData.ageMin}
-                    onChange={(e) => updateFormData('ageMin', Number(e.target.value))}
-                    className="w-1/2 h-10 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600 px-3 text-gray-900"
-                    placeholder="Min age"
-                  />
-                  <input
-                    type="number"
-                    min="18"
-                    max="99"
-                    value={formData.ageMax}
-                    onChange={(e) => updateFormData('ageMax', Number(e.target.value))}
-                    className="w-1/2 h-10 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600 px-3 text-gray-900"
-                    placeholder="Max age"
-                  />
+              {mode !== 'edit' && (
+                <div className="space-y-3">
+                  <label className="text-gray-900">Maximum Distance</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Up to</span>
+                    <span className="text-purple-600 font-semibold">{formData.maxDistance} {formData.useMetric ? 'km' : 'miles'}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-500">5</span>
+                    <input
+                      type="range"
+                      min="5"
+                      max="500"
+                      value={formData.maxDistance}
+                      onChange={(e) => updateFormData('maxDistance', Number(e.target.value))}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                    />
+                    <span className="text-sm text-gray-500">500+</span>
+                  </div>
+                  <div className="flex justify-end">
+                     <button
+                      onClick={() => updateFormData('useMetric', !formData.useMetric)}
+                      className="text-sm text-purple-600 hover:text-purple-700"
+                    >
+                      Switch to {formData.useMetric ? 'Miles' : 'Kilometers'}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>{formData.ageMin} years</span>
-                  <span>{formData.ageMax} years</span>
+              )}
+
+              {mode !== 'edit' && (
+                <div className="space-y-3">
+                  <label className="text-gray-900">Age Range Preference</label>
+                  <p className="text-gray-600">Set your preferred age range</p>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="18"
+                      max="99"
+                      value={formData.ageMin}
+                      onChange={(e) => updateFormData('ageMin', Number(e.target.value))}
+                      className="w-1/2 h-10 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600 px-3 text-gray-900"
+                      placeholder="Min age"
+                    />
+                    <input
+                      type="number"
+                      min="18"
+                      max="99"
+                      value={formData.ageMax}
+                      onChange={(e) => updateFormData('ageMax', Number(e.target.value))}
+                      className="w-1/2 h-10 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600 px-3 text-gray-900"
+                      placeholder="Max age"
+                    />
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>{formData.ageMin} years</span>
+                    <span>{formData.ageMax} years</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-3">
                 <label className="text-gray-900">Height Preference (select all that apply)</label>
@@ -1346,60 +1407,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 7: Distance */}
+          {/* Step 7: Interests with Accordion */}
           {currentStep === 7 && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-gray-900">Preferred Unit</label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => updateFormData('useMetric', false)}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-colors ${
-                      !formData.useMetric
-                        ? 'border-purple-600 bg-purple-50'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    Miles (mi)
-                  </button>
-                  <button
-                    onClick={() => updateFormData('useMetric', true)}
-                    className={`flex-1 p-4 rounded-xl border-2 transition-colors ${
-                      formData.useMetric
-                        ? 'border-purple-600 bg-purple-50'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    Kilometers (km)
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-gray-900">Maximum Distance</label>
-                  <span className="text-purple-600">
-                    {formData.maxDistance} {formData.useMetric ? 'km' : 'mi'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="5"
-                  max="200"
-                  value={formData.maxDistance}
-                  onChange={(e) => updateFormData('maxDistance', Number(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                />
-                <div className="flex justify-between text-gray-500">
-                  <span>5 {formData.useMetric ? 'km' : 'mi'}</span>
-                  <span>200 {formData.useMetric ? 'km' : 'mi'}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 8: Interests with Accordion */}
-          {currentStep === 8 && (
             <div className="space-y-3">
               <label className="text-gray-900">Your Hobbies & Interests *</label>
               <p className="text-gray-600">Click a category to expand and select specific interests</p>
@@ -1539,8 +1548,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 9: Food, Music & Entertainment */}
-          {currentStep === 9 && (
+          {/* Step 8: Food, Music & Entertainment */}
+          {currentStep === 8 && (
             <div className="space-y-3">
               <label className="text-gray-900">Food, Music & Entertainment *</label>
               <p className="text-gray-600">Click a category to expand and select your preferences</p>
@@ -1611,6 +1620,88 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Games */}
+              <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedGames(!expandedGames)}
+                  className={`w-full p-4 flex items-center justify-between transition-colors ${
+                    (formData.hobbies['Games']?.length > 0) ? 'bg-purple-50 border-purple-200' : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-900">🎮 Games</span>
+                    {formData.hobbies['Games']?.length > 0 && (
+                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full">
+                        {formData.hobbies['Games'].length}
+                      </span>
+                    )}
+                  </div>
+                  {expandedGames ? <ChevronUp className="w-5 h-5 text-gray-900" /> : <ChevronDown className="w-5 h-5 text-gray-900" />}
+                </button>
+                
+                {expandedGames && (
+                  <div className="p-4 bg-gray-50 border-t-2 border-gray-200">
+                    <div className="space-y-4">
+                      {Object.entries({
+                        'Card Games': ['52 Cards/Standard Deck', 'Magic: The Gathering', 'Pokemon', 'Uno', 'Yu-Gi-Oh', 'Other'],
+                        'Board Games': ['Classic', 'Cooperative', 'Modern', 'Party Games', 'Strategy', 'Other'],
+                        'Video Games': ['Action', 'FPS', 'Horror', 'MMORPG', 'MOBA', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Other'],
+                        'Other': ['Trivia', 'Verbal Games', 'Word Games', 'Other']
+                      }).map(([subcat, items]) => (
+                        <div key={subcat}>
+                          <p className="text-purple-900 mb-2">{subcat}</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {items.map(item => {
+                              const fullValue = `${subcat}: ${item}`;
+                              const hobbyValue = `Games:${fullValue}`; 
+                              const status = getInterestStatus('hobbies', hobbyValue);
+                              
+                              return (
+                                <button
+                                  key={item}
+                                  onClick={() => updateHobbySubcategory('Games', fullValue)}
+                                  onMouseDown={() => handleInterestMouseDown('hobbies', hobbyValue)}
+                                  onMouseUp={handleInterestMouseUp}
+                                  onMouseLeave={handleInterestMouseUp}
+                                  onTouchStart={() => handleInterestMouseDown('hobbies', hobbyValue)}
+                                  onTouchEnd={handleInterestMouseUp}
+                                  className={`relative p-3 rounded-lg border-2 transition-colors text-left ${
+                                    status === 'mandatory'
+                                      ? 'border-green-500 bg-green-50'
+                                      : status === 'dealbreaker'
+                                      ? 'border-red-500 bg-red-50'
+                                      : formData.hobbies['Games']?.includes(fullValue)
+                                      ? 'border-purple-600 bg-purple-100 text-purple-900'
+                                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {formData.hobbies['Games']?.includes(fullValue) && !status && (
+                                    <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                                      <Check className="w-4 h-4 text-white" />
+                                    </div>
+                                  )}
+                                  {status === 'mandatory' && (
+                                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                      <span className="text-white text-xs">⭐</span>
+                                    </div>
+                                  )}
+                                  {status === 'dealbreaker' && (
+                                    <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                      <X className="w-4 h-4 text-white" />
+                                    </div>
+                                  )}
+                                  {item}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1819,8 +1910,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 10: Dealbreakers */}
-          {currentStep === 10 && (
+          {/* Step 9: Dealbreakers */}
+          {currentStep === 9 && (
             <div className="space-y-6">
               <div className="space-y-3">
                 <label className="text-gray-900">Dealbreakers (Optional)</label>
@@ -1851,8 +1942,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 11: Desires - What I Am Hoping For */}
-          {currentStep === 11 && (
+          {/* Step 10: What you want */}
+          {currentStep === 10 && (
             <div className="space-y-6">
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
                 <p className="text-purple-900">💭 What I Am Hoping For</p>
@@ -1988,7 +2079,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
 
         {/* Navigation */}
         <div className="flex gap-3">
-          {currentStep > 0 && (
+          {currentStep > initialStep && (
             <button
               onClick={handleBack}
               className="px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 transition-colors"
@@ -2001,13 +2092,13 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             disabled={!canProceed()}
             className="flex-1 bg-purple-600 text-white py-4 px-6 rounded-full hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {currentStep < steps.length - 1 ? (
+            {currentStep < (endStep !== undefined ? endStep : steps.length - 1) ? (
               <>
                 Continue
                 <ChevronRight className="w-5 h-5" />
               </>
             ) : (
-              'Start Matching'
+              mode === 'edit' ? 'Save Changes' : 'Start Matching'
             )}
           </button>
         </div>

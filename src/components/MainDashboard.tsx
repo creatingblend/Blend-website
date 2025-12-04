@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Heart, X, MessageCircle, User, Settings, Crown, Sliders, Users, Lock, Plus, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { AnimatedLogo } from './AnimatedLogo';
-import { SettingsPanel } from './SettingsPanel';
 import { InterestsModal } from './InterestsModal';
 import { SecurityScreen } from './SecurityScreen';
 import { PeerToPeerTab } from './PeerToPeerTab';
@@ -111,7 +110,6 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'new' | 'conversations' | 'groups' | 'peer' | 'tutorials' | 'events' | 'random' | 'celebrate' | 'services' | 'friends'>('new');
   const [showFilters, setShowFilters] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showInterestsModal, setShowInterestsModal] = useState(false);
@@ -405,7 +403,7 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
                   : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
-              Random Dating
+              Random Chat
             </button>
             <button
               onClick={() => setActiveTab('celebrate')}
@@ -919,16 +917,6 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
             </div>
           )}
           </div>
-
-          {/* Right: Settings Panel (visible on larger screens) */}
-          <div className="hidden lg:block">
-            <SettingsPanel
-              onOpenMandatory={() => setShowInterestsModal(true)}
-              onOpenUpdate={() => setShowInterestsModal(true)}
-              onOpenDesires={() => onNavigate('signup')}
-              onOpenSecurity={() => setShowSecurityScreen(true)}
-            />
-          </div>
         </div>
       </div>
 
@@ -1060,59 +1048,10 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
         />
       )}
 
-      {/* Settings Modal (for mobile/when settings button clicked) */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
-                <h2 className="text-gray-900">Settings</h2>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <SettingsPanel
-                onOpenMandatory={() => {
-                  setShowSettings(false);
-                  setShowInterestsModal(true);
-                }}
-                onOpenUpdate={() => {
-                  setShowSettings(false);
-                  setShowInterestsModal(true);
-                }}
-                onOpenDesires={() => {
-                  setShowSettings(false);
-                  onNavigate('signup');
-                }}
-                onOpenSecurity={() => {
-                  setShowSettings(false);
-                  setShowSecurityScreen(true);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* User Profile Modal */}
       {showUserProfile && (
         <UserProfile 
           onClose={() => setShowUserProfile(false)}
-          onOpenMandatory={() => {
-            setShowUserProfile(false);
-            setShowInterestsModal(true);
-          }}
-          onOpenUpdate={() => {
-            setShowUserProfile(false);
-            setShowInterestsModal(true);
-          }}
-          onOpenDesires={() => {
-            setShowUserProfile(false);
-            onNavigate('signup');
-          }}
           onOpenSecurity={() => {
             setShowUserProfile(false);
             setShowSecurityScreen(true);

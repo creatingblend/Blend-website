@@ -580,6 +580,10 @@
     top: calc(var(--spacing) * 3);
   }
 
+  .top-4 {
+    top: calc(var(--spacing) * 4);
+  }
+
   .top-6 {
     top: calc(var(--spacing) * 6);
   }
@@ -666,6 +670,10 @@
 
   .z-50 {
     z-index: 50;
+  }
+
+  .z-\[60\] {
+    z-index: 60;
   }
 
   .m-4 {
@@ -774,10 +782,6 @@
 
   .grid {
     display: grid;
-  }
-
-  .hidden {
-    display: none;
   }
 
   .inline-block {
@@ -2282,6 +2286,11 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
+  .shadow-md {
+    --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, #0000001a), 0 2px 4px -2px var(--tw-shadow-color, #0000001a);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+
   .shadow-sm {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, #0000001a), 0 1px 2px -1px var(--tw-shadow-color, #0000001a);
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -2470,12 +2479,6 @@
   }
 
   @media (hover: hover) {
-    .hover\:bg-amber-700:hover {
-      background-color: var(--color-amber-700);
-    }
-  }
-
-  @media (hover: hover) {
     .hover\:bg-gray-50:hover {
       background-color: var(--color-gray-50);
     }
@@ -2484,6 +2487,12 @@
   @media (hover: hover) {
     .hover\:bg-gray-100:hover {
       background-color: var(--color-gray-100);
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-gray-200:hover {
+      background-color: var(--color-gray-200);
     }
   }
 
@@ -2785,12 +2794,6 @@
   }
 
   @media (width >= 64rem) {
-    .lg\:block {
-      display: block;
-    }
-  }
-
-  @media (width >= 64rem) {
     .lg\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2858,10 +2861,6 @@
 
   .dark\:border-yellow-800:is(.dark *) {
     border-color: var(--color-yellow-800);
-  }
-
-  .dark\:bg-amber-700:is(.dark *) {
-    background-color: var(--color-amber-700);
   }
 
   .dark\:bg-amber-900\/20:is(.dark *) {
@@ -3237,12 +3236,6 @@
   }
 
   @media (hover: hover) {
-    .dark\:hover\:bg-amber-800:is(.dark *):hover {
-      background-color: var(--color-amber-800);
-    }
-  }
-
-  @media (hover: hover) {
     .dark\:hover\:bg-amber-900\/30:is(.dark *):hover {
       background-color: color-mix(in srgb, oklch(.414 .112 45.904) 30%, transparent);
     }
@@ -3293,12 +3286,6 @@
       .dark\:hover\:bg-pink-900\/30:is(.dark *):hover {
         background-color: color-mix(in oklab, var(--color-pink-900) 30%, transparent);
       }
-    }
-  }
-
-  @media (hover: hover) {
-    .dark\:hover\:bg-purple-900:is(.dark *):hover {
-      background-color: var(--color-purple-900);
     }
   }
 
