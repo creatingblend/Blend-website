@@ -249,6 +249,7 @@ export function DatePlanner({ match, onBack }: DatePlannerProps) {
             <li>• Arrange your own transportation</li>
             <li>• Trust your instincts</li>
             <li>• Keep your phone charged</li>
+            <li>• We monitor your date location to alert authorities/agents if an emergency occurs</li>
           </ul>
         </div>
 

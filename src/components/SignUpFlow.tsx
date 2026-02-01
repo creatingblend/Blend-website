@@ -129,7 +129,6 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
     'Distance',
     'Interests',
     'Food, Music & Entertainment',
-    'Personality',
     'Dealbreakers',
     'What you want'
   ];
@@ -202,40 +201,30 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
         nextStep: 8
       };
     }
-    // Step 9 → 10: Going to personality
+    // Step 9 → 10: Going to dealbreakers
     else if (currentStep === 9) {
       transitionNeeded = true;
       config = {
         lines: [
           "Almost there! 🎯",
-          "Now tell us which of these options best describe your personality type?"
+          "Tell us some things that would be unacceptable ⚠️"
         ],
         nextStep: 10
       };
     }
-    // Step 10 → 11: Going to dealbreakers
+    // Step 10 → 11: Going to desires
     else if (currentStep === 10) {
-      transitionNeeded = true;
-      config = {
-        lines: [
-          "Tell us some things that would be unacceptable ⚠️"
-        ],
-        nextStep: 11
-      };
-    }
-    // Step 11 → 12: Going to desires
-    else if (currentStep === 11) {
       transitionNeeded = true;
       config = {
         lines: [
           "You made it to the final page! 🎊",
           "These next options don't affect your compatibility, but they do let your potential interests know what you're looking for"
         ],
-        nextStep: 12
+        nextStep: 11
       };
     }
-    // Step 12 → Complete: Final message
-    else if (currentStep === 12) {
+    // Step 11 → Complete: Final message
+    else if (currentStep === 11) {
       transitionNeeded = true;
       config = {
         lines: [
@@ -302,15 +291,55 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const toggleArrayItem = (field: string, item: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: (prev[field as keyof typeof prev] as string[]).includes(item)
-        ? (prev[field as keyof typeof prev] as string[]).filter(i => i !== item)
-        : [...(prev[field as keyof typeof prev] as string[]), item]
-    }));
+    setFormData(prev => {
+      // 1. Handle the main array update
+      const currentArray = prev[field as keyof typeof prev] as string[];
+      const isRemoving = currentArray.includes(item);
+      
+      let newMainArray: string[];
+      if (isRemoving) {
+        newMainArray = currentArray.filter(i => i !== item);
+      } else {
+        newMainArray = [...currentArray, item];
+      }
+      
+      // Start with a clone of prev
+      const updated = {
+        ...prev,
+        [field]: newMainArray
+      };
+
+      if (isRemoving) {
+        // Explicitly handle Step 9 Interest Cleanups
+        if (field === 'favoriteFoods') {
+          updated.priorityFoods = prev.priorityFoods.filter(i => i !== item);
+          updated.dealbreakerFoods = prev.dealbreakerFoods.filter(i => i !== item);
+        } else if (field === 'musicPerforming') {
+          updated.priorityMusicPerforming = prev.priorityMusicPerforming.filter(i => i !== item);
+          updated.dealbreakerMusicPerforming = prev.dealbreakerMusicPerforming.filter(i => i !== item);
+        } else if (field === 'musicListening') {
+          updated.priorityMusicListening = prev.priorityMusicListening.filter(i => i !== item);
+          updated.dealbreakerMusicListening = prev.dealbreakerMusicListening.filter(i => i !== item);
+        } else if (field === 'moviesTV') {
+          updated.priorityMoviesTV = prev.priorityMoviesTV.filter(i => i !== item);
+          updated.dealbreakerMoviesTV = prev.dealbreakerMoviesTV.filter(i => i !== item);
+        }
+        
+        // Handle Desires Cleanup
+        if (field === 'desiresActivities' || field === 'desiresTraits') {
+           const combinedDesire = `${field}:${item}`;
+           updated.priorityDesires = prev.priorityDesires.filter(d => d !== combinedDesire);
+           updated.dealbreakerDesires = prev.dealbreakerDesires.filter(d => d !== combinedDesire);
+           updated.highlightDesires = prev.highlightDesires.filter(d => d !== combinedDesire);
+        }
+      }
+      
+      return updated;
+    });
   };
 
   const handleDesireMouseDown = (field: string, value: string) => {
+    if (value === 'Other') return;
     const timeout = setTimeout(() => {
       setSelectedDesire({ field, value });
       setShowDesireModal(true);
@@ -326,7 +355,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleDesireSpecialAction = (action: 'mandatory' | 'dealbreaker' | 'highlight') => {
-    if (!selectedDesire) return;
+    if (!selectedDesire || selectedDesire.value === 'Other') return;
 
     const { field, value } = selectedDesire;
     const combinedDesire = `${field}:${value}`;
@@ -372,6 +401,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleInterestMouseDown = (field: string, value: string) => {
+    if (value === 'Other') return;
     const timeout = setTimeout(() => {
       setSelectedInterest({ field, value });
       setShowInterestModal(true);
@@ -387,7 +417,7 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const handleInterestSpecialAction = (action: 'mandatory' | 'dealbreaker') => {
-    if (!selectedInterest) return;
+    if (!selectedInterest || selectedInterest.value === 'Other') return;
 
     const { field, value } = selectedInterest;
     
@@ -471,15 +501,31 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
   };
 
   const updateHobbySubcategory = (hobby: string, subcategory: string) => {
-    setFormData(prev => ({
-      ...prev,
-      hobbies: {
-        ...prev.hobbies,
-        [hobby]: prev.hobbies[hobby]?.includes(subcategory)
-          ? prev.hobbies[hobby].filter(s => s !== subcategory)
-          : [...(prev.hobbies[hobby] || []), subcategory]
+    setFormData(prev => {
+      const currentHobbies = prev.hobbies[hobby] || [];
+      const isRemoving = currentHobbies.includes(subcategory);
+      
+      const updatedHobbies = isRemoving
+        ? currentHobbies.filter(s => s !== subcategory)
+        : [...currentHobbies, subcategory];
+        
+      const updated = {
+        ...prev,
+        hobbies: {
+          ...prev.hobbies,
+          [hobby]: updatedHobbies
+        }
+      };
+
+      if (isRemoving) {
+        // Clean up special arrays
+        const fullValue = `${hobby}: ${subcategory}`;
+        updated.priorityHobbies = prev.priorityHobbies.filter(h => h !== fullValue);
+        updated.dealbreakerHobbies = prev.dealbreakerHobbies.filter(h => h !== fullValue);
       }
-    }));
+      
+      return updated;
+    });
   };
 
   const hobbyCategories = {
@@ -514,9 +560,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
       case 7: return true;
       case 8: return Object.keys(formData.hobbies).length > 0;
       case 9: return formData.favoriteFoods.length > 0 && (formData.musicPerforming.length > 0 || formData.musicListening.length > 0) && formData.moviesTV.length > 0;
-      case 10: return formData.personality.length > 0;
+      case 10: return true;
       case 11: return true;
-      case 12: return true;
       default: return false;
     }
   };
@@ -1774,75 +1819,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 10: Personality */}
+          {/* Step 10: Dealbreakers */}
           {currentStep === 10 && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-gray-900">Personality Descriptors *</label>
-                <p className="text-gray-600">Select traits that describe you</p>
-                
-                {/* Personality Test Placeholder */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
-                  <p className="text-purple-900 mb-3">
-                    💡 If you're not exactly sure, feel free to take our personality test to help you fill in the blanks!
-                  </p>
-                  <button
-                    type="button"
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-full hover:opacity-90 transition-opacity"
-                    onClick={() => alert('Personality test feature coming soon!')}
-                  >
-                    Take Personality Test ✨
-                  </button>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
-                  <p className="text-blue-900">💡 In the next step, you'll be able to mark specific dealbreakers</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {['Adventurous', 'Ambitious', 'Analytical', 'Calm', 'Creative', 'Empathetic', 'Energetic', 'Extrovert', 'Foodie', 'Humorous', 'Introvert', 'Laid-back', 'Loud', 'Optimistic', 'Person of Habit', 'Planner', 'Quiet', 'Realistic', 'Serious', 'Spontaneous', 'Thoughtful']
-                    .slice(0, showAllPersonality ? undefined : 6)
-                    .map(option => (
-                    <button
-                      key={option}
-                      onClick={() => toggleArrayItem('personality', option)}
-                      className={`relative p-4 rounded-xl border-2 transition-colors ${
-                        formData.personality.includes(option)
-                          ? 'border-purple-600 bg-purple-50'
-                          : 'border-gray-200 bg-white'
-                      }`}
-                    >
-                      {formData.personality.includes(option) && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      {option}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowAllPersonality(!showAllPersonality)}
-                  className="w-full flex items-center justify-center gap-2 p-3 text-purple-600 hover:text-purple-700 transition-colors"
-                >
-                  {showAllPersonality ? (
-                    <>
-                      <ChevronUp className="w-5 h-5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-5 h-5" />
-                      Show More (15 more options)
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 11: Dealbreakers */}
-          {currentStep === 11 && (
             <div className="space-y-6">
               <div className="space-y-3">
                 <label className="text-gray-900">Dealbreakers (Optional)</label>
@@ -1873,8 +1851,8 @@ export function SignUpFlow({ onComplete }: SignUpFlowProps) {
             </div>
           )}
 
-          {/* Step 12: Desires - What I Am Hoping For */}
-          {currentStep === 12 && (
+          {/* Step 11: Desires - What I Am Hoping For */}
+          {currentStep === 11 && (
             <div className="space-y-6">
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
                 <p className="text-purple-900">💭 What I Am Hoping For</p>

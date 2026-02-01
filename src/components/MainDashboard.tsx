@@ -157,12 +157,19 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AnimatedLogo size="small" autoPlay={false} />
-            <span className="text-gray-900 select-all cursor-text hover:bg-purple-100 transition-colors px-2 py-1 rounded text-center">B.L.E.N.D</span>
-          </div>
+        <div className="max-w-7xl mx-auto grid grid-cols-3 items-center">
+          {/* Left: Logo */}
           <div className="flex items-center gap-4">
+            <AnimatedLogo size="small" autoPlay={false} />
+          </div>
+          
+          {/* Center: B.L.E.N.D */}
+          <div className="flex justify-center">
+            <span className="text-gray-900 select-all cursor-text hover:bg-purple-100 transition-colors px-2 py-1 rounded">B.L.E.N.D</span>
+          </div>
+          
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-4 justify-end">
             <button 
               onClick={() => onNavigate('feedback', mockMatches[0])}
               className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
@@ -922,14 +929,6 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
               onOpenSecurity={() => setShowSecurityScreen(true)}
             />
           </div>
-        </div>
-      </div>
-
-      {/* Ads Bar (unpaid only) */}
-      <div className="bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-300 p-3">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-gray-600">ADS (unpaid only)</p>
-          <p className="text-gray-500 mt-1">Upgrade to premium for an ad-free experience</p>
         </div>
       </div>
 

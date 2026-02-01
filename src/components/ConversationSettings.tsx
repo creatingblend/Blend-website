@@ -324,7 +324,6 @@ export function ConversationSettings({ match, onBack, onDeleteConversation, onSa
                   <li>All messages will be deleted</li>
                   <li>All shared content will be removed</li>
                   <li>You cannot recover this conversation</li>
-                  <li>You may still see this person in new matches</li>
                 </ul>
               </div>
 
