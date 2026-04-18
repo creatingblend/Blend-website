@@ -1,13 +1,70 @@
 import { useState, useEffect } from 'react';
-import { Check, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
-import { DualRangeSlider } from './DualRangeSlider';
+import { Check, ChevronRight, ChevronDown, ChevronUp, X, Lightbulb } from 'lucide-react';
 import { TransitionPopup } from './TransitionPopup';
+import { Step0Content } from './Step0Content';
+import { Step1Content } from './Step1Content';
+import { Step2Content } from './Step2Content';
 
 interface SignUpFlowProps {
   onComplete: () => void;
   initialStep?: number;
   endStep?: number;
   mode?: 'signup' | 'edit';
+}
+
+interface SectionDropdownProps {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  required?: boolean;
+}
+
+function SectionDropdown({ title, isOpen, onToggle, children, required }: SectionDropdownProps) {
+  return (
+    <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+      >
+        <span className="font-semibold text-gray-900">{title} {required && '*'}</span>
+        {isOpen ? <ChevronUp className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
+      </button>
+      {isOpen && (
+        <div className="p-4 border-t-2 border-gray-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface HeaderTipProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+function HeaderTip({ title, children }: HeaderTipProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between bg-transparent">
+         <label className="text-gray-900 font-semibold text-xl">{title}</label>
+         <button 
+           onClick={() => setIsOpen(!isOpen)}
+           className="p-2 text-gray-400 hover:text-yellow-500 transition-colors rounded-full hover:bg-yellow-50 focus:outline-none"
+           title="Show help"
+         >
+           <Lightbulb className={`w-5 h-5 ${isOpen ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+         </button>
+      </div>
+      {isOpen && (
+         <div className="mt-2 p-3 bg-purple-50 text-purple-900 rounded-lg text-sm border border-purple-100 animate-in fade-in slide-in-from-top-1">
+           {children}
+         </div>
+      )}
+    </div>
+  );
 }
 
 export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signup' }: SignUpFlowProps) {
@@ -23,17 +80,59 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
   const [showAllPersonality, setShowAllPersonality] = useState(false);
   const [showAllDesiresActivities, setShowAllDesiresActivities] = useState(false);
   const [showAllDesiresTraits, setShowAllDesiresTraits] = useState(false);
-  const [expandedFoods, setExpandedFoods] = useState(false);
-  const [expandedMusicPerforming, setExpandedMusicPerforming] = useState(false);
-  const [expandedMusicListening, setExpandedMusicListening] = useState(false);
-  const [expandedMoviesTV, setExpandedMoviesTV] = useState(false);
-  const [expandedGames, setExpandedGames] = useState(false);
+  const [expandedEntertainment, setExpandedEntertainment] = useState<string | null>(null);
   const [showDesireModal, setShowDesireModal] = useState(false);
   const [selectedDesire, setSelectedDesire] = useState<{ field: string, value: string } | null>(null);
   const [desireHoldTimeout, setDesireHoldTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [selectedInterest, setSelectedInterest] = useState<{ field: string, value: string } | null>(null);
   const [interestHoldTimeout, setInterestHoldTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showOptionalPopup, setShowOptionalPopup] = useState(false);
+  
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    // Consolidated pages
+    personalInfo: true,
+    preferences: false,
+    myIdentity: true,
+    valuesGoals: true,
+    // Original pages
+    gender: true,
+    race: false,
+    interestedIn: false,
+    military: false,
+    pronouns: false,
+    zodiacSign: false,
+    exercise: true,
+    commonLanguages: true,
+    uncommonLanguages: false,
+    heightPref: true,
+    bodyTypePref: false,
+    religion: true,
+    politics: false,
+    racePref: false,
+    children: false,
+    desiresActivities: false,
+    desiresTraits: false
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      // Create a new state where all sections are closed
+      const newState = Object.keys(prev).reduce((acc, key) => {
+        acc[key] = false;
+        return acc;
+      }, {} as Record<string, boolean>);
+      
+      // If the clicked section was closed, open it. 
+      // If it was open, it stays closed (because we set all to false above)
+      if (!prev[section]) {
+        newState[section] = true;
+      }
+      
+      return newState;
+    });
+  };
+
   const [formData, setFormData] = useState({
     // Name and About
     name: '',
@@ -64,6 +163,7 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
     // Languages
     languages: [] as Array<{ language: string, nativeScript?: string }>,
     languageInput: '',
+    uncommonLanguageInput: '',
     
     // Preferences
     ageMin: 20,
@@ -78,6 +178,7 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
     relationshipGoal: [] as string[],
     marriageDesire: '',
     childrenPreference: [] as string[],
+    children: [] as string[],
     
     // Distance
     maxDistance: 50,
@@ -125,13 +226,9 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
   }, []); // Only run once on mount
 
   const steps = [
-    'Name & About',
-    'Identity',
-    'Personal Info',
-    'Languages',
-    'Age, Height & Location',
-    'Preferences',
-    'Relationship',
+    'Profile & Preferences', // Step 1 (was temp 1:1)
+    'Identity & Background', // Step 2 (was temp 2:2)
+    'Values & Goals', // Step 3 (was temp 3:3)
     'Interests',
     'Food, Music & Entertainment',
     'Dealbreakers',
@@ -197,52 +294,36 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
         nextStep: 1
       };
     }
-    // Step 2 → 3: Going to languages
+    // Step 2 → 3: Show optional popup (Values & Goals -> Interests)
     else if (currentStep === 2) {
-      transitionNeeded = true;
-      config = {
-        lines: [
-          "Great! Your profile is coming along 🎉",
-          "What languages do you speak? We even included some 'lesser known' languages for you to share"
-        ],
-        nextStep: 3
-      };
+      // Show optional popup instead of transition
+      setShowOptionalPopup(true);
+      return;
     }
-    // Step 6 → 7: Going to interests (Relationship -> Interests)
-    else if (currentStep === 6) {
-      transitionNeeded = true;
-      config = {
-        lines: [
-          "Awesome! Now then, let's get into the details about your personality ✨",
-          "💡 Tip: Hold any interest to mark it as mandatory or a dealbreaker"
-        ],
-        nextStep: 7
-      };
-    }
-    // Step 8 → 9: Going to dealbreakers (Food/Music -> Dealbreakers)
-    else if (currentStep === 8) {
+    // Step 4 → 5: Going to dealbreakers (Food/Music -> Dealbreakers)
+    else if (currentStep === 4) {
       transitionNeeded = true;
       config = {
         lines: [
           "Almost there! 🎯",
           "Tell us some things that would be unacceptable ⚠️"
         ],
-        nextStep: 9
+        nextStep: 5
       };
     }
-    // Step 9 → 10: Going to desires (Dealbreakers -> What you want)
-    else if (currentStep === 9) {
+    // Step 5 → 6: Going to desires (Dealbreakers -> What you want)
+    else if (currentStep === 5) {
       transitionNeeded = true;
       config = {
         lines: [
           "You made it to the final page! 🎊",
           "These next options don't affect your compatibility, but they do let your potential interests know what you're looking for"
         ],
-        nextStep: 10
+        nextStep: 6
       };
     }
-    // Step 10 → Complete: Final message
-    else if (currentStep === 10) {
+    // Step 6 → Complete: Final message
+    else if (currentStep === 6) {
       transitionNeeded = true;
       config = {
         lines: [
@@ -569,26 +650,33 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
     'Learning': ['Documentaries', 'Higher Education', 'Languages', 'Museums', 'Online Courses', 'Podcasts', 'Reading', 'Social Media (YouTube/TikTok)', 'Other'],
     'Technology': ['AI/Tech News', 'Building PCs', 'Coding', 'Finance/Crypto', 'Gadgets', 'Gaming', 'Other'],
     'Social': ['Church', 'Clubs', 'Dancing', 'Karaoke', 'Meetups', 'Networking', 'Volunteering', 'Other'],
-    'Pets': ['Dogs', 'Cats', 'Rodent(s)', 'Terrarium Pets', 'Aquarium Pets', 'Farm Animals', 'Other']
+    'Pets': ['Dogs', 'Cats', 'Rodent(s)', 'Terrarium Pets', 'Aquarium Pets', 'Farm Animals', 'Other'],
+    'Board Games': ['Classic', 'Cooperative', 'Modern', 'Party Games', 'Strategy', 'Table Top RPG', 'Other']
   };
 
   const canProceed = () => {
     switch (currentStep) {
-      case 0: return formData.name.trim().length > 0;
-      case 1: return formData.gender && formData.race && formData.orientation.length > 0;
-      case 2: return formData.age > 0 && (formData.heightFt !== '' && formData.heightFt > 0) && (formData.weightLbs !== '' && formData.weightLbs > 0);
-      case 3: return formData.languages.length > 0;
-      case 4: return true;
-      case 5: return formData.religion && formData.politics.length > 0 && formData.racePreference.length > 0;
-      case 6: 
+      case 0: // Profile & Preferences (mandatory)
+        return formData.name.trim().length > 0 && 
+               formData.age > 0 && 
+               (formData.heightFt !== '' && formData.heightFt > 0) && 
+               (formData.weightLbs !== '' && formData.weightLbs > 0) &&
+               formData.exerciseHabits &&
+               formData.languages.length > 0 &&
+               formData.ageMin > 0 &&
+               formData.ageMax > 0;
+      case 1: // Identity (mandatory)
+        return formData.gender && formData.religion;
+      case 2: // Values & Goals (mandatory)
         const needsMarriage = formData.relationshipGoal.includes('Marriage / Long-term Relationship');
         return formData.relationshipGoal.length > 0 && 
                formData.childrenPreference.length > 0 &&
                (!needsMarriage || formData.marriageDesire);
-      case 7: return Object.keys(formData.hobbies).length > 0;
-      case 8: return formData.favoriteFoods.length > 0 && (formData.musicPerforming.length > 0 || formData.musicListening.length > 0) && formData.moviesTV.length > 0;
-      case 9: return true;
-      case 10: return true;
+      case 3: // Interests (optional)
+      case 4: // Food/Music/Entertainment (optional)
+      case 5: // Dealbreakers (optional)
+      case 6: // About You (optional)
+        return true;
       default: return false;
     }
   };
@@ -627,9 +715,589 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
         </div>
 
         {/* Step Content */}
-        <div className="flex-1 mb-8 overflow-y-auto">
-          {/* Step 0: Name & About */}
+        <div className="flex-1 mb-8 overflow-y-auto overflow-x-hidden">
+          {/* Step 0: 1:1 temp - Consolidated Profile & Preferences */}
           {currentStep === 0 && (
+            <Step0Content 
+              formData={formData} 
+              updateFormData={updateFormData}
+              toggleArrayItem={toggleArrayItem}
+            />
+          )}
+
+          {/* OLD Step 0 WITH DROPDOWNS - DELETE BELOW */}
+          {false && currentStep === 0 && (
+            <div className="space-y-4">
+              <SectionDropdown 
+                title="📋 Personal Information" 
+                isOpen={expandedSections.personalInfo || false}
+                onToggle={() => toggleSection('personalInfo')}
+                required
+              >
+                {/* Name */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Your Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => updateFormData('name', e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                  />
+                </div>
+
+                {/* Age */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Age *</label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      updateFormData('age', isNaN(val) ? '' : val);
+                    }}
+                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                    placeholder="25"
+                  />
+                </div>
+
+                {/* Exercise Habits */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Exercise Habits 💪</label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {['I exercise regularly', 'I mildly work out', 'I do not exercise regularly'].map(option => (
+                      <button
+                        key={option}
+                        onClick={() => updateFormData('exerciseHabits', option)}
+                        className={`p-3 rounded-xl border-2 text-left transition-colors text-sm ${
+                          formData.exerciseHabits === option
+                            ? 'border-purple-600 bg-purple-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {formData.exerciseHabits === option && '✓ '}{option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Height & Weight */}
+                <div className="bg-white rounded-xl p-4 border-2 border-gray-200 mb-4">
+                  <h4 className="text-gray-900 font-medium mb-3 text-sm">Height & Weight 📏</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-700 text-xs block mb-1">Height *</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          placeholder="Ft"
+                          value={formData.heightFt}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            updateFormData('heightFt', isNaN(val) ? '' : val);
+                          }}
+                          className="w-full p-2 min-w-0 border-2 border-gray-200 rounded-lg focus:border-purple-600 outline-none text-sm"
+                        />
+                        <input
+                          type="number"
+                          placeholder="In"
+                          value={formData.heightIn}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            updateFormData('heightIn', isNaN(val) ? '' : val);
+                          }}
+                          className="w-full p-2 min-w-0 border-2 border-gray-200 rounded-lg focus:border-purple-600 outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-gray-700 text-xs block mb-1">Weight (lbs) *</label>
+                      <input
+                        type="number"
+                        value={formData.weightLbs}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          updateFormData('weightLbs', isNaN(val) ? '' : val);
+                        }}
+                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-purple-600 outline-none text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-200">
+                      <span className="text-gray-700 text-xs">Body Type:</span>
+                      <span className="font-semibold text-purple-600 text-sm">{formData.autoBodyType}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div className="space-y-2">
+                  <label className="text-gray-900 font-medium text-sm">Languages I Speak 🌍</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                    {['English 🇺🇸', 'Spanish 🇪🇸', 'Mandarin 中文', 'French 🇫🇷', 'German 🇩🇪', 'Japanese 日本語'].map(option => {
+                      const langName = option.split(' ')[0];
+                      const isSelected = formData.languages.some(l => l.language.includes(langName));
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => {
+                            if (isSelected) {
+                              updateFormData('languages', formData.languages.filter(l => !l.language.includes(langName)));
+                            } else {
+                              updateFormData('languages', [...formData.languages, { language: option }]);
+                            }
+                          }}
+                          className={`relative p-2 rounded-lg border-2 transition-colors text-xs ${
+                            isSelected
+                              ? 'border-purple-600 bg-purple-50'
+                              : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-white" />
+                            </div>
+                          )}
+                          <span className="block truncate">{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Add Another Language */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.languageInput}
+                      onChange={(e) => updateFormData('languageInput', e.target.value)}
+                      placeholder="Add another language..."
+                      className="flex-1 p-2 border-2 border-gray-200 rounded-lg focus:border-purple-600 outline-none text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        if (formData.languageInput.trim().length > 0) {
+                          updateFormData('languages', [...formData.languages, { language: formData.languageInput }]);
+                          updateFormData('languageInput', '');
+                        }
+                      }}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {formData.languages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.languages.map((lang, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex items-center gap-1"
+                        >
+                          {lang.language}
+                          <button
+                            onClick={() => {
+                              updateFormData('languages', formData.languages.filter((_, i) => i !== index));
+                            }}
+                            className="hover:bg-purple-200 rounded-full"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </SectionDropdown>
+
+              <SectionDropdown 
+                title="⚙️ Your Preferences" 
+                isOpen={expandedSections.preferences || false}
+                onToggle={() => toggleSection('preferences')}
+                required
+              >
+                {/* Age Range Preference */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Age Range Preference 🎂</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-gray-600 text-xs mb-1 block">Min Age</label>
+                      <input
+                        type="number"
+                        value={formData.ageMin}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          updateFormData('ageMin', isNaN(val) ? 18 : val);
+                        }}
+                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-blue-600 outline-none text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-gray-600 text-xs mb-1 block">Max Age</label>
+                      <input
+                        type="number"
+                        value={formData.ageMax}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          updateFormData('ageMax', isNaN(val) ? 99 : val);
+                        }}
+                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-blue-600 outline-none text-sm"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-xs mt-1">
+                    Looking for ages {formData.ageMin} - {formData.ageMax}
+                  </p>
+                </div>
+
+                {/* Height Preference */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Height Preference 📏</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Shorter than me', 'Same height', 'Taller than me', 'No preference'].map(option => (
+                      <button
+                        key={option}
+                        onClick={() => toggleArrayItem('heightPreference', option)}
+                        className={`relative p-2 rounded-lg border-2 transition-colors text-xs ${
+                          formData.heightPreference.includes(option)
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {formData.heightPreference.includes(option) && (
+                          <div className="absolute top-1 right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Body Type Preference */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Body Type Preference 💪</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Slim', 'Athletic', 'Average', 'Curvy', 'Muscular', 'No preference'].map(option => (
+                      <button
+                        key={option}
+                        onClick={() => toggleArrayItem('bodyTypePreference', option)}
+                        className={`relative p-2 rounded-lg border-2 transition-colors text-xs ${
+                          formData.bodyTypePreference.includes(option)
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {formData.bodyTypePreference.includes(option) && (
+                          <div className="absolute top-1 right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Max Distance */}
+                <div className="space-y-2">
+                  <label className="text-gray-900 font-medium text-sm">Max Distance 🗺️</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={formData.maxDistance}
+                    onChange={(e) => updateFormData('maxDistance', parseInt(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">1 mi</span>
+                    <span className="font-semibold text-blue-600">{formData.maxDistance} miles</span>
+                    <span className="text-gray-600">100 mi</span>
+                  </div>
+                </div>
+              </SectionDropdown>
+            </div>
+          )}
+
+          {/* Step 1: 2:2 temp - Consolidated Identity */}
+          {currentStep === 1 && (
+            <Step1Content 
+              formData={formData} 
+              updateFormData={updateFormData}
+              toggleArrayItem={toggleArrayItem}
+            />
+          )}
+
+          {/* OLD Step 1 WITH DROPDOWNS - DELETE BELOW */}
+          {false && currentStep === 1 && (
+            <div className="space-y-4">
+              <SectionDropdown 
+                title="👤 My Identity" 
+                isOpen={expandedSections.myIdentity || false}
+                onToggle={() => toggleSection('myIdentity')}
+                required
+              >
+                {/* Gender */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">I am a *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Man', emoji: '👨' },
+                      { label: 'Woman', emoji: '👩' },
+                      { label: 'Non-binary', emoji: '⚧️' },
+                      { label: 'Trans Male', emoji: '🏳️‍⚧️' },
+                      { label: 'Trans Female', emoji: '🏳️‍⚧️' },
+                      { label: 'Other', emoji: '✨' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => updateFormData('gender', option.label)}
+                        className={`p-3 rounded-xl border-2 transition-colors text-sm ${
+                          formData.gender === option.label
+                            ? 'border-indigo-600 bg-indigo-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Race */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">My Race/Ethnicity *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Asian', emoji: '🌏' },
+                      { label: 'South Asian', emoji: '🌏' },
+                      { label: 'Black', emoji: '🌍' },
+                      { label: 'Hispanic', emoji: '🌎' },
+                      { label: 'White', emoji: '🌎' },
+                      { label: 'Middle Eastern', emoji: '🕌' },
+                      { label: 'Pacific Islander', emoji: '🏝️' },
+                      { label: 'Native American', emoji: '🪶' },
+                      { label: 'Mixed', emoji: '🤝' },
+                      { label: 'Other', emoji: '🌟' },
+                      { label: 'Prefer not to say', emoji: '🤐' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => updateFormData('race', option.label)}
+                        className={`p-3 rounded-xl border-2 transition-colors text-sm ${
+                          formData.race === option.label
+                            ? 'border-indigo-600 bg-indigo-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Interested In */}
+                <div className="space-y-2">
+                  <label className="text-gray-900 font-medium text-sm">Interested in * (select all that apply)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Men', emoji: '👨' },
+                      { label: 'Women', emoji: '👩' },
+                      { label: 'Non-binary', emoji: '⚧️' },
+                      { label: 'Bisexual', emoji: '💜' },
+                      { label: 'Other', emoji: '💖' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => toggleArrayItem('orientation', option.label)}
+                        className={`relative p-3 rounded-xl border-2 transition-colors text-sm ${
+                          formData.orientation.includes(option.label)
+                            ? 'border-indigo-600 bg-indigo-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {formData.orientation.includes(option.label) && (
+                          <div className="absolute top-1 right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </SectionDropdown>
+            </div>
+          )}
+
+          {/* Step 2: 3:3 temp - Consolidated Values & Goals */}
+          {currentStep === 2 && (
+            <Step2Content 
+              formData={formData} 
+              updateFormData={updateFormData}
+              toggleArrayItem={toggleArrayItem}
+            />
+          )}
+
+          {/* OLD Step 2 WITH DROPDOWNS - DELETE BELOW */}
+          {false && currentStep === 2 && (
+            <div className="space-y-4">
+              <SectionDropdown 
+                title="💚 Values & Relationship Goals" 
+                isOpen={expandedSections.valuesGoals || false}
+                onToggle={() => toggleSection('valuesGoals')}
+                required
+              >
+                {/* Religion */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Religion ✝️☪️🕉️</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Christian', emoji: '✝️' },
+                      { label: 'Muslim', emoji: '☪️' },
+                      { label: 'Hindu', emoji: '🕉️' },
+                      { label: 'Buddhist', emoji: '☸️' },
+                      { label: 'Jewish', emoji: '✡️' },
+                      { label: 'Mormon', emoji: '📖' },
+                      { label: 'Atheist', emoji: '🔬' },
+                      { label: 'Agnostic', emoji: '🤔' },
+                      { label: 'Spiritual', emoji: '✨' },
+                      { label: 'Other', emoji: '🌟' },
+                      { label: 'No Preference', emoji: '💫' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => updateFormData('religion', option.label)}
+                        className={`p-3 rounded-xl border-2 transition-colors text-sm ${
+                          formData.religion === option.label
+                            ? 'border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Political Views */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Political Views 🗳️ (select all that apply)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Liberal', emoji: '🗽' },
+                      { label: 'Conservative', emoji: '🦅' },
+                      { label: 'Moderate', emoji: '⚖️' },
+                      { label: 'Progressive', emoji: '🌱' },
+                      { label: 'Libertarian', emoji: '🦋' },
+                      { label: 'Socialist', emoji: '🤝' },
+                      { label: 'Apolitical', emoji: '🤷' },
+                      { label: 'No Preference', emoji: '🌟' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => toggleArrayItem('politics', option.label)}
+                        className={`relative p-3 rounded-xl border-2 transition-colors text-sm ${
+                          formData.politics.includes(option.label)
+                            ? 'border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        {formData.politics.includes(option.label) && (
+                          <div className="absolute top-1 right-1 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Race Preference */}
+                <div className="space-y-2 mb-4">
+                  <label className="text-gray-900 font-medium text-sm">Race Preference 🌍 (select all that apply)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Asian', emoji: '🌏' },
+                      { label: 'South Asian', emoji: '🌏' },
+                      { label: 'Black', emoji: '🌍' },
+                      { label: 'Hispanic', emoji: '🌎' },
+                      { label: 'White', emoji: '🌎' },
+                      { label: 'Middle Eastern', emoji: '🕌' },
+                      { label: 'Pacific Islander', emoji: '🏝️' },
+                      { label: 'Native American', emoji: '🪶' },
+                      { label: 'Mixed', emoji: '🤝' },
+                      { label: 'Other', emoji: '🌟' },
+                      { label: 'No Preference', emoji: '💫' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => toggleArrayItem('racePreference', option.label)}
+                        className={`relative p-3 rounded-xl border-2 transition-colors text-sm ${
+                          formData.racePreference.includes(option.label)
+                            ? 'border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        {formData.racePreference.includes(option.label) && (
+                          <div className="absolute top-1 right-1 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Relationship Goal */}
+                <div className="space-y-2">
+                  <label className="text-gray-900 font-medium text-sm">Relationship Goal 💕 (select all that apply)</label>
+                  <p className="text-gray-600 text-xs mb-2">This is a mandatory match filter</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { label: 'Long-term relationship', emoji: '💍' },
+                      { label: 'Short-term relationship', emoji: '💝' },
+                      { label: 'Marriage', emoji: '👰' },
+                      { label: 'Casual dating', emoji: '☕' },
+                      { label: 'New friends', emoji: '👋' },
+                      { label: 'Figuring it out', emoji: '🤔' }
+                    ].map(option => (
+                      <button
+                        key={option.label}
+                        onClick={() => toggleArrayItem('relationshipGoal', option.label)}
+                        className={`relative p-3 rounded-xl border-2 transition-colors text-sm text-left ${
+                          formData.relationshipGoal.includes(option.label)
+                            ? 'border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                        }`}
+                      >
+                        {formData.relationshipGoal.includes(option.label) && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <span className="mr-2">{option.emoji}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </SectionDropdown>
+            </div>
+          )}
+
+          {/* REMOVED Step 3: Name & About - Now handled in temp files */}
+          {false && currentStep === 3 && (
             <div className="space-y-6">
               <div className="space-y-3">
                 <label className="text-gray-900">Your Name *</label>
@@ -660,11 +1328,15 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
             </div>
           )}
 
-          {/* Step 1: Identity */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-gray-900">I am a *</label>
+          {/* REMOVED Step 4: Identity - Now handled in temp files */}
+          {false && currentStep === 4 && (
+            <div className="space-y-4">
+              <SectionDropdown 
+                title="I am a" 
+                required 
+                isOpen={expandedSections.gender} 
+                onToggle={() => toggleSection('gender')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Man', emoji: '👨' },
@@ -672,7 +1344,7 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     { label: 'Non-binary', emoji: '⚧️' },
                     { label: 'Trans Male', emoji: '🏳️‍⚧️' },
                     { label: 'Trans Female', emoji: '🏳️‍⚧️' },
-                    { label: 'Custom', emoji: '✨' }
+                    { label: 'Other', emoji: '✨' }
                   ].map(option => (
                     <button
                       key={option.label}
@@ -688,13 +1360,18 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">My Race/Ethnicity *</label>
+              <SectionDropdown 
+                title="My Race/Ethnicity" 
+                required 
+                isOpen={expandedSections.race} 
+                onToggle={() => toggleSection('race')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Asian', emoji: '🌏' },
+                    { label: 'South Asian', emoji: '🌏' },
                     { label: 'Black', emoji: '🌍' },
                     { label: 'Hispanic', emoji: '🌎' },
                     { label: 'White', emoji: '🌎' },
@@ -719,18 +1396,19 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Interested in * (select all that apply)</label>
+              <SectionDropdown 
+                title="Interested in" 
+                required 
+                isOpen={expandedSections.interestedIn} 
+                onToggle={() => toggleSection('interestedIn')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Men', emoji: '👨' },
                     { label: 'Women', emoji: '👩' },
                     { label: 'Non-binary', emoji: '⚧️' },
-                    { label: 'Straight', emoji: '💑' },
-                    { label: 'Gay', emoji: '🏳️‍🌈' },
-                    { label: 'Lesbian', emoji: '💕' },
                     { label: 'Bisexual', emoji: '💜' },
                     { label: 'Other', emoji: '💖' }
                   ].map(option => (
@@ -753,10 +1431,87 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Military Service (Optional)</label>
+              <SectionDropdown 
+                title="Religion" 
+                required 
+                isOpen={expandedSections.religion} 
+                onToggle={() => toggleSection('religion')}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Christian', emoji: '✝️' },
+                    { label: 'Muslim', emoji: '☪️' },
+                    { label: 'Hindu', emoji: '🕉️' },
+                    { label: 'Buddhist', emoji: '☸️' },
+                    { label: 'Jewish', emoji: '✡️' },
+                    { label: 'Mormon', emoji: '📖' },
+                    { label: 'Atheist', emoji: '🔬' },
+                    { label: 'Agnostic', emoji: '🤔' },
+                    { label: 'Spiritual', emoji: '✨' },
+                    { label: 'Other', emoji: '🌟' },
+                    { label: 'No Preference', emoji: '💫' }
+                  ].map(option => (
+                    <button
+                      key={option.label}
+                      onClick={() => updateFormData('religion', option.label)}
+                      className={`p-4 rounded-xl border-2 transition-colors ${
+                        formData.religion === option.label
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <span className="mr-2">{option.emoji}</span>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </SectionDropdown>
+
+              <SectionDropdown 
+                title="Political Views" 
+                required 
+                isOpen={expandedSections.politics} 
+                onToggle={() => toggleSection('politics')}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Liberal', emoji: '🗽' },
+                    { label: 'Conservative', emoji: '🦅' },
+                    { label: 'Moderate', emoji: '⚖️' },
+                    { label: 'Progressive', emoji: '🌱' },
+                    { label: 'Libertarian', emoji: '🦋' },
+                    { label: 'Socialist', emoji: '🤝' },
+                    { label: 'Apolitical', emoji: '🤷' },
+                    { label: 'No Preference', emoji: '🌟' }
+                  ].map(option => (
+                    <button
+                      key={option.label}
+                      onClick={() => toggleArrayItem('politics', option.label)}
+                      className={`relative p-4 rounded-xl border-2 transition-colors ${
+                        formData.politics.includes(option.label)
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      {formData.politics.includes(option.label) && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                      <span className="mr-2">{option.emoji}</span>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </SectionDropdown>
+
+              <SectionDropdown 
+                title="Military Service (Optional)" 
+                isOpen={expandedSections.military} 
+                onToggle={() => toggleSection('military')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Currently Serving', emoji: '🛡️' },
@@ -778,10 +1533,13 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Pronouns (Optional - select all that apply)</label>
+              <SectionDropdown 
+                title="Pronouns (Optional)" 
+                isOpen={expandedSections.pronouns} 
+                onToggle={() => toggleSection('pronouns')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'He/Him', emoji: '👨' },
@@ -809,105 +1567,55 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Zodiac Sign (Optional)</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Aquarius', emoji: '♒' },
-                    { label: 'Aries', emoji: '♈' },
-                    { label: 'Cancer', emoji: '♋' },
-                    { label: 'Capricorn', emoji: '♑' },
-                    { label: 'Gemini', emoji: '♊' },
-                    { label: 'Leo', emoji: '♌' },
-                    { label: 'Libra', emoji: '♎' },
-                    { label: 'Pisces', emoji: '♓' },
-                    { label: 'Sagittarius', emoji: '♐' },
-                    { label: 'Scorpio', emoji: '♏' },
-                    { label: 'Taurus', emoji: '♉' },
-                    { label: 'Virgo', emoji: '♍' },
-                    { label: 'Prefer not to share', emoji: '🤐' }
-                  ].map(option => (
+              <SectionDropdown 
+                title="Zodiac Sign (Optional)" 
+                isOpen={expandedSections.zodiacSign} 
+                onToggle={() => toggleSection('zodiacSign')}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces', 'Prefer not to share'].map(sign => (
                     <button
-                      key={option.label}
-                      onClick={() => updateFormData('zodiacSign', option.label)}
-                      className={`p-4 rounded-xl border-2 transition-colors ${
-                        formData.zodiacSign === option.label
+                      key={sign}
+                      onClick={() => updateFormData('zodiacSign', sign)}
+                      className={`p-3 rounded-xl border-2 text-sm transition-colors ${
+                        formData.zodiacSign === sign
                           ? 'border-purple-600 bg-purple-50'
                           : 'border-gray-200 bg-white'
                       }`}
                     >
-                      <span className="mr-2">{option.emoji}</span>
-                      {option.label}
+                      {sign}
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
             </div>
           )}
 
-          {/* Step 2: Personal Info */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
+          {/* REMOVED Step 5: Personal Info - Now handled in temp files */}
+          {false && currentStep === 5 && (
+            <div className="space-y-4">
               <div className="space-y-3">
-                <label className="text-gray-900">Your Age *</label>
+                <label className="text-gray-900">Age *</label>
                 <input
                   type="number"
-                  min="18"
-                  max="99"
-                  value={formData.age || ''}
+                  value={formData.age}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    updateFormData('age', val === '' ? '' : Number(val));
+                    const val = parseInt(e.target.value);
+                    updateFormData('age', isNaN(val) ? '' : val);
                   }}
-                  placeholder="Enter your age"
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none text-center"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-gray-900">Your Height *</label>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-gray-600">Feet</label>
-                    <input
-                      type="number"
-                      min="3"
-                      max="8"
-                      value={formData.heightFt}
-                      onChange={(e) => updateFormData('heightFt', e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-gray-600">Inches</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="11"
-                      value={formData.heightIn}
-                      onChange={(e) => updateFormData('heightIn', e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-gray-900">Your Weight (lbs) *</label>
-                <input
-                  type="number"
-                  min="50"
-                  max="500"
-                  value={formData.weightLbs}
-                  onChange={(e) => updateFormData('weightLbs', e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                  placeholder="25"
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Exercise Habits *</label>
+              <SectionDropdown 
+                title="Exercise Habits" 
+                required 
+                isOpen={expandedSections.exercise} 
+                onToggle={() => toggleSection('exercise')}
+              >
                 <div className="grid grid-cols-1 gap-3">
                   {['I exercise regularly', 'I mildly work out', 'I do not exercise regularly'].map(option => (
                     <button
@@ -923,22 +1631,71 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                <p className="text-purple-900">Auto-calculated Body Type:</p>
-                <p className="text-purple-700 mt-1">{formData.autoBodyType}</p>
-                <p className="text-purple-600 mt-2">This helps us match you with compatible preferences</p>
+                <h3 className="text-purple-900 font-semibold mb-2">Height & Weight</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex gap-4 mb-2">
+                      <label className="text-gray-900 flex-1">Height *</label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        placeholder="Ft"
+                        value={formData.heightFt}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          updateFormData('heightFt', isNaN(val) ? '' : val);
+                        }}
+                        className="w-full p-3 min-w-0 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                      />
+                      <input
+                        type="number"
+                        placeholder="In"
+                        value={formData.heightIn}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          updateFormData('heightIn', isNaN(val) ? '' : val);
+                        }}
+                        className="w-full p-3 min-w-0 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-gray-900 block mb-2">Weight (lbs) *</label>
+                    <input
+                      type="number"
+                      value={formData.weightLbs}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        updateFormData('weightLbs', isNaN(val) ? '' : val);
+                      }}
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-100">
+                    <span className="text-gray-600">Calculated Body Type:</span>
+                    <span className="font-semibold text-purple-600">{formData.autoBodyType}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Step 3: Languages */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-gray-900">Languages I Speak *</label>
-                <p className="text-gray-600">Add languages you are fluent in</p>
+          {/* REMOVED Step 3: Languages - Covered in temp files */}
+          {false && currentStep === 3 && (
+            <div className="space-y-4">
+              <SectionDropdown 
+                title="Languages I Speak" 
+                required 
+                isOpen={expandedSections.commonLanguages} 
+                onToggle={() => toggleSection('commonLanguages')}
+              >
+                <p className="text-gray-600 mb-3 text-sm">Add languages you are fluent in</p>
                 
                 {/* Common languages quick select */}
                 <div className="grid grid-cols-2 gap-3">
@@ -971,100 +1728,82 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     );
                   })}
                 </div>
+              </SectionDropdown>
                 
-                {/* Custom language input - Common Section */}
-                <div className="flex items-center gap-3 mt-4">
-                  <input
-                    type="text"
-                    value={formData.languageInput}
-                    onChange={(e) => updateFormData('languageInput', e.target.value)}
-                    placeholder="Add another language..."
-                    className="flex-1 p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
-                  />
-                  <button
-                    onClick={() => {
-                      if (formData.languageInput.trim().length > 0) {
-                        updateFormData('languages', [...formData.languages, { language: formData.languageInput }]);
-                        updateFormData('languageInput', '');
-                      }
-                    }}
-                    className="px-6 py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
-                  >
-                    Add
-                  </button>
-                </div>
-                
-                {/* Uncommon/Fictional languages */}
-                <div className="mt-6">
-                  <label className="text-gray-700 mb-2 block">Uncommon Languages (Optional)</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {['Klingon 🖖', 'Dothraki ⚔️', 'Elvish 🧝', 'Na\'vi 🌿', 'Other 🌟'].map(option => {
-                      const langName = option.split(' ')[0];
-                      const isSelected = formData.languages.some(l => l.language.includes(langName));
-                      return (
-                        <button
-                          key={option}
-                          onClick={() => {
-                            if (isSelected) {
-                              updateFormData('languages', formData.languages.filter(l => !l.language.includes(langName)));
-                            } else {
-                              updateFormData('languages', [...formData.languages, { language: option }]);
-                            }
-                          }}
-                          className={`relative p-3 rounded-lg border-2 transition-colors ${
-                            isSelected
-                              ? 'border-purple-600 bg-purple-50'
-                              : 'border-gray-200 bg-white'
-                          }`}
-                        >
-                          {isSelected && (
-                            <div className="absolute top-2 right-2 w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                          {option}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Custom language input - Uncommon Section */}
-                  <div className="flex items-center gap-3 mt-4">
-                    <input
-                      type="text"
-                      value={formData.languageInput}
-                      onChange={(e) => updateFormData('languageInput', e.target.value)}
-                      placeholder="Add another uncommon language..."
-                      className="flex-1 p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
-                    />
-                    <button
-                      onClick={() => {
-                        if (formData.languageInput.trim().length > 0) {
-                          updateFormData('languages', [...formData.languages, { language: formData.languageInput }]);
-                          updateFormData('languageInput', '');
-                        }
-                      }}
-                      className="px-6 py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
+              {/* Custom language input - Common Section */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={formData.languageInput}
+                  onChange={(e) => updateFormData('languageInput', e.target.value)}
+                  placeholder="Add another language..."
+                  className="flex-1 p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
+                />
+                <button
+                  onClick={() => {
+                    if (formData.languageInput.trim().length > 0) {
+                      updateFormData('languages', [...formData.languages, { language: formData.languageInput }]);
+                      updateFormData('languageInput', '');
+                    }
+                  }}
+                  className="px-6 py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+                >
+                  Add
+                </button>
               </div>
+              
+              {/* Uncommon/Fictional languages */}
+              <SectionDropdown 
+                title="Uncommon Languages" 
+                isOpen={expandedSections.uncommonLanguages} 
+                onToggle={() => toggleSection('uncommonLanguages')}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  {['Klingon 🖖', 'Dothraki ⚔️', 'Elvish 🧝', 'Na\'vi 🌿', 'Other 🌟'].map(option => {
+                    const langName = option.split(' ')[0];
+                    const isSelected = formData.languages.some(l => l.language.includes(langName));
+                    return (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          if (isSelected) {
+                            updateFormData('languages', formData.languages.filter(l => !l.language.includes(langName)));
+                          } else {
+                            updateFormData('languages', [...formData.languages, { language: option }]);
+                          }
+                        }}
+                        className={`relative p-3 rounded-lg border-2 transition-colors ${
+                          isSelected
+                            ? 'border-purple-600 bg-purple-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </SectionDropdown>
 
               {formData.languages.length > 0 && (
                 <div className="space-y-3">
-                  <label className="text-gray-900">Selected Languages ({formData.languages.length})</label>
+                  <h3 className="font-semibold text-gray-900">Selected Languages:</h3>
                   <div className="flex flex-wrap gap-2">
-                    {formData.languages.map((lang, index) => (
-                      <button
-                        key={index}
-                        onClick={() => updateFormData('languages', formData.languages.filter((_, i) => i !== index))}
-                        className="px-4 py-2 bg-purple-100 text-purple-900 rounded-full border-2 border-purple-600 hover:bg-purple-200 transition-colors flex items-center gap-2"
-                      >
-                        {lang.language}
-                        <span className="text-purple-600">×</span>
-                      </button>
+                    {formData.languages.map((lang, idx) => (
+                      <div key={idx} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full flex items-center gap-2">
+                        <span>{lang.language}</span>
+                        <button
+                          onClick={() => updateFormData('languages', formData.languages.filter((_, i) => i !== idx))}
+                          className="hover:text-purple-900"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1072,74 +1811,48 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
             </div>
           )}
 
-          {/* Step 4: Age, Height & Location */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              {mode !== 'edit' && (
-                <div className="space-y-3">
-                  <label className="text-gray-900">Maximum Distance</label>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Up to</span>
-                    <span className="text-purple-600 font-semibold">{formData.maxDistance} {formData.useMetric ? 'km' : 'miles'}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-500">5</span>
-                    <input
-                      type="range"
-                      min="5"
-                      max="500"
-                      value={formData.maxDistance}
-                      onChange={(e) => updateFormData('maxDistance', Number(e.target.value))}
-                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                    />
-                    <span className="text-sm text-gray-500">500+</span>
-                  </div>
-                  <div className="flex justify-end">
-                     <button
-                      onClick={() => updateFormData('useMetric', !formData.useMetric)}
-                      className="text-sm text-purple-600 hover:text-purple-700"
-                    >
-                      Switch to {formData.useMetric ? 'Miles' : 'Kilometers'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {mode !== 'edit' && (
-                <div className="space-y-3">
-                  <label className="text-gray-900">Age Range Preference</label>
-                  <p className="text-gray-600">Set your preferred age range</p>
-                  
-                  <div className="flex gap-2">
+          {/* REMOVED Step 4: Age, Height & Location - Covered in temp files */}
+          {false && currentStep === 4 && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <label className="text-gray-900">Age Range Preference</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">Min Age</label>
                     <input
                       type="number"
                       min="18"
                       max="99"
                       value={formData.ageMin}
-                      onChange={(e) => updateFormData('ageMin', Number(e.target.value))}
-                      className="w-1/2 h-10 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600 px-3 text-gray-900"
-                      placeholder="Min age"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        updateFormData('ageMin', isNaN(val) ? 18 : val);
+                      }}
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
                     />
+                  </div>
+                  <div>
+                    <label className="text-gray-600 text-sm mb-1 block">Max Age</label>
                     <input
                       type="number"
                       min="18"
                       max="99"
                       value={formData.ageMax}
-                      onChange={(e) => updateFormData('ageMax', Number(e.target.value))}
-                      className="w-1/2 h-10 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600 px-3 text-gray-900"
-                      placeholder="Max age"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        updateFormData('ageMax', isNaN(val) ? 99 : val);
+                      }}
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none"
                     />
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>{formData.ageMin} years</span>
-                    <span>{formData.ageMax} years</span>
-                  </div>
                 </div>
-              )}
+              </div>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Height Preference (select all that apply)</label>
-                <p className="text-gray-600">Based on demographic averages</p>
+              <SectionDropdown 
+                title="Height Preference" 
+                isOpen={expandedSections.heightPref} 
+                onToggle={() => toggleSection('heightPref')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Short', emoji: '📏' },
@@ -1166,10 +1879,13 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Body Type Preference (select all that apply)</label>
+              <SectionDropdown 
+                title="Body Type Preference" 
+                isOpen={expandedSections.bodyTypePref} 
+                onToggle={() => toggleSection('bodyTypePref')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Petite', emoji: '🌸' },
@@ -1200,15 +1916,39 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
+              </SectionDropdown>
+
+              <div className="space-y-3">
+                <label className="text-gray-900">Max Distance (miles)</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  value={formData.maxDistance}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    updateFormData('maxDistance', isNaN(val) ? 1 : val);
+                  }}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+                <div className="flex justify-between text-gray-500 text-sm">
+                  <span>1 mile</span>
+                  <span>{formData.maxDistance} miles</span>
+                  <span>100+ miles</span>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Step 5: Preferences */}
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-gray-900">Religion *</label>
+          {/* REMOVED Step 5: Preferences - Covered in temp files */}
+          {false && currentStep === 5 && (
+            <div className="space-y-4">
+              <SectionDropdown 
+                title="Religion" 
+                required 
+                isOpen={expandedSections.religion} 
+                onToggle={() => toggleSection('religion')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Christian', emoji: '✝️' },
@@ -1216,10 +1956,12 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     { label: 'Hindu', emoji: '🕉️' },
                     { label: 'Buddhist', emoji: '☸️' },
                     { label: 'Jewish', emoji: '✡️' },
+                    { label: 'Mormon', emoji: '📖' },
                     { label: 'Atheist', emoji: '🔬' },
-                    { label: 'Agnostic', emoji: '��' },
+                    { label: 'Agnostic', emoji: '🤔' },
                     { label: 'Spiritual', emoji: '✨' },
-                    { label: 'No Preference', emoji: '🌟' }
+                    { label: 'Other', emoji: '🌟' },
+                    { label: 'No Preference', emoji: '💫' }
                   ].map(option => (
                     <button
                       key={option.label}
@@ -1235,10 +1977,14 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Political Views * (select all that apply)</label>
+              <SectionDropdown 
+                title="Political Views" 
+                required 
+                isOpen={expandedSections.politics} 
+                onToggle={() => toggleSection('politics')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Liberal', emoji: '🗽' },
@@ -1269,13 +2015,18 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Race Preference * (select all that apply)</label>
+              <SectionDropdown 
+                title="Race Preference" 
+                required 
+                isOpen={expandedSections.racePref} 
+                onToggle={() => toggleSection('racePref')}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Asian', emoji: '🌏' },
+                    { label: 'South Asian', emoji: '🌏' },
                     { label: 'Black', emoji: '🌍' },
                     { label: 'Hispanic', emoji: '🌎' },
                     { label: 'White', emoji: '🌎' },
@@ -1305,13 +2056,13 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
             </div>
           )}
 
-          {/* Step 6: Relationship Goals */}
-          {currentStep === 6 && (
-            <div className="space-y-6">
+          {/* REMOVED Step 6: Relationship Goals - Covered in temp files */}
+          {false && currentStep === 6 && (
+            <div className="space-y-4">
               <div className="space-y-3">
                 <label className="text-gray-900">Relationship Goal * (select all that apply)</label>
                 <p className="text-gray-600">This is a mandatory match filter</p>
@@ -1364,6 +2115,7 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                             : 'border-gray-200 bg-white'
                         }`}
                       >
+                        {formData.marriageDesire === option.label && '✓ '}
                         <span className="mr-2">{option.emoji}</span>
                         {option.label}
                       </button>
@@ -1372,17 +2124,21 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                 </div>
               )}
 
-              <div className="space-y-3">
-                <label className="text-gray-900">Children * (select all that apply)</label>
+              <SectionDropdown 
+                title="Children" 
+                required 
+                isOpen={expandedSections.children} 
+                onToggle={() => toggleSection('children')}
+              >
                 <div className="grid grid-cols-1 gap-3">
                   {[
-                    { label: 'Want children', emoji: '👶' },
-                    { label: 'Have children', emoji: '👨‍👩‍👧' },
-                    { label: 'Don\'t want children', emoji: '🚫' },
-                    { label: 'Don\'t want more children', emoji: '✋' },
-                    { label: 'Open to children', emoji: '🤔' },
-                    { label: 'Partner can have children', emoji: '👍' },
-                    { label: 'No Preference', emoji: '🌟' }
+                    { label: 'I want children', emoji: '👶' },
+                    { label: 'I do not want children', emoji: '🚫' },
+                    { label: 'I have children', emoji: '👨‍👩‍👧' },
+                    { label: 'Open to children', emoji: '🤷' },
+                    { label: 'They have children', emoji: '👪' },
+                    { label: 'No more Children', emoji: '🛑' },
+                    { label: 'Unsure / No preference', emoji: '🤔' }
                   ].map(option => (
                     <button
                       key={option.label}
@@ -1403,18 +2159,17 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                     </button>
                   ))}
                 </div>
-              </div>
+              </SectionDropdown>
             </div>
           )}
 
-          {/* Step 7: Interests with Accordion */}
-          {currentStep === 7 && (
+          {/* Step 3: Interests with Accordion */}
+          {currentStep === 3 && (
             <div className="space-y-3">
-              <label className="text-gray-900">Your Hobbies & Interests *</label>
-              <p className="text-gray-600">Click a category to expand and select specific interests</p>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                <p className="text-blue-900">💡 Hold any interest to mark it as mandatory or a dealbreaker</p>
-              </div>
+              <HeaderTip title="Your Hobbies & Interests *">
+                <p className="font-medium mb-2">Click a category to expand and select specific interests</p>
+                <p>Hold any interest to mark it as a mandatory interest or a dealbreaker</p>
+              </HeaderTip>
               
               {Object.entries(hobbyCategories).map(([category, subcategories]) => {
                 const isExpanded = expandedHobby === category;
@@ -1548,370 +2303,283 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
             </div>
           )}
 
-          {/* Step 8: Food, Music & Entertainment */}
-          {currentStep === 8 && (
+          {/* Step 4: Food, Music & Entertainment */}
+          {currentStep === 4 && (
             <div className="space-y-3">
-              <label className="text-gray-900">Food, Music & Entertainment *</label>
-              <p className="text-gray-600">Click a category to expand and select your preferences</p>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                <p className="text-blue-900">💡 Hold any option to mark as Mandatory or Dealbreaker</p>
-              </div>
+              <HeaderTip title="Your Preferences *">
+                 <p className="font-medium mb-2">Click a category to expand and select your preferences</p>
+                 <p>Hold any option to mark as a mandatory interest or a dealbreaker</p>
+              </HeaderTip>
               
               {/* Favorite Foods */}
-              <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedFoods(!expandedFoods)}
-                  className={`w-full p-4 flex items-center justify-between transition-colors ${
-                    formData.favoriteFoods.length > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-900">🍕 Favorite Foods</span>
-                    {formData.favoriteFoods.length > 0 && (
-                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full">
-                        {formData.favoriteFoods.length}
-                      </span>
-                    )}
+              <SectionDropdown 
+                 title="🍕 Favorite Foods" 
+                 isOpen={expandedEntertainment === 'Foods'} 
+                 onToggle={() => setExpandedEntertainment(expandedEntertainment === 'Foods' ? null : 'Foods')}
+              >
+                  <div className="grid grid-cols-2 gap-3">
+                    {['BBQ', 'Biryani', 'Burgers', 'Chinese', 'Indian', 'Italian', 'Japanese', 'Korean', 'Mediterranean', 'Mexican', 'Pasta', 'Pizza', 'Ramen', 'Seafood', 'Steaks', 'Sushi', 'Tacos', 'Thai', 'Vegan', 'Vegetarian', 'Not Picky', 'Other'].map(option => {
+                      const status = getInterestStatus('favoriteFoods', option);
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => toggleArrayItem('favoriteFoods', option)}
+                          onMouseDown={() => handleInterestMouseDown('favoriteFoods', option)}
+                          onMouseUp={handleInterestMouseUp}
+                          onMouseLeave={handleInterestMouseUp}
+                          onTouchStart={() => handleInterestMouseDown('favoriteFoods', option)}
+                          onTouchEnd={handleInterestMouseUp}
+                          className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
+                            status === 'mandatory' 
+                              ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                              : status === 'dealbreaker'
+                              ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-gray-900 dark:text-gray-100'
+                              : formData.favoriteFoods.includes(option)
+                              ? 'border-purple-600 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                          }`}
+                        >
+                          {formData.favoriteFoods.includes(option) && !status && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {status === 'mandatory' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">⭐</span>
+                            </div>
+                          )}
+                          {status === 'dealbreaker' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                              <X className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {option}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {expandedFoods ? <ChevronUp className="w-5 h-5 text-gray-900" /> : <ChevronDown className="w-5 h-5 text-gray-900" />}
-                </button>
-                
-                {expandedFoods && (
-                  <div className="p-4 bg-gray-50 border-t-2 border-gray-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      {['BBQ', 'Biryani', 'Burgers', 'Chinese', 'Indian', 'Italian', 'Japanese', 'Korean', 'Mediterranean', 'Mexican', 'Pasta', 'Pizza', 'Ramen', 'Seafood', 'Steaks', 'Sushi', 'Tacos', 'Thai', 'Vegan', 'Vegetarian', 'Not Picky', 'Other'].map(option => {
-                        const status = getInterestStatus('favoriteFoods', option);
-                        return (
-                          <button
-                            key={option}
-                            onClick={() => toggleArrayItem('favoriteFoods', option)}
-                            onMouseDown={() => handleInterestMouseDown('favoriteFoods', option)}
-                            onMouseUp={handleInterestMouseUp}
-                            onMouseLeave={handleInterestMouseUp}
-                            onTouchStart={() => handleInterestMouseDown('favoriteFoods', option)}
-                            onTouchEnd={handleInterestMouseUp}
-                            className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
-                              status === 'mandatory' 
-                                ? 'border-green-500 bg-green-50'
-                                : status === 'dealbreaker'
-                                ? 'border-red-500 bg-red-50'
-                                : formData.favoriteFoods.includes(option)
-                                ? 'border-purple-600 bg-purple-50'
-                                : 'border-gray-200 bg-white'
-                            }`}
-                          >
-                            {formData.favoriteFoods.includes(option) && !status && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {status === 'mandatory' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-xs">⭐</span>
-                              </div>
-                            )}
-                            {status === 'dealbreaker' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                <X className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              </SectionDropdown>
 
               {/* Games */}
-              <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedGames(!expandedGames)}
-                  className={`w-full p-4 flex items-center justify-between transition-colors ${
-                    (formData.hobbies['Games']?.length > 0) ? 'bg-purple-50 border-purple-200' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-900">🎮 Games</span>
-                    {formData.hobbies['Games']?.length > 0 && (
-                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full">
-                        {formData.hobbies['Games'].length}
-                      </span>
-                    )}
-                  </div>
-                  {expandedGames ? <ChevronUp className="w-5 h-5 text-gray-900" /> : <ChevronDown className="w-5 h-5 text-gray-900" />}
-                </button>
-                
-                {expandedGames && (
-                  <div className="p-4 bg-gray-50 border-t-2 border-gray-200">
-                    <div className="space-y-4">
-                      {Object.entries({
-                        'Card Games': ['52 Cards/Standard Deck', 'Magic: The Gathering', 'Pokemon', 'Uno', 'Yu-Gi-Oh', 'Other'],
-                        'Board Games': ['Classic', 'Cooperative', 'Modern', 'Party Games', 'Strategy', 'Other'],
-                        'Video Games': ['Action', 'FPS', 'Horror', 'MMORPG', 'MOBA', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Other'],
-                        'Other': ['Trivia', 'Verbal Games', 'Word Games', 'Other']
-                      }).map(([subcat, items]) => (
-                        <div key={subcat}>
-                          <p className="text-purple-900 mb-2">{subcat}</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {items.map(item => {
-                              const fullValue = `${subcat}: ${item}`;
-                              const hobbyValue = `Games:${fullValue}`; 
-                              const status = getInterestStatus('hobbies', hobbyValue);
-                              
-                              return (
-                                <button
-                                  key={item}
-                                  onClick={() => updateHobbySubcategory('Games', fullValue)}
-                                  onMouseDown={() => handleInterestMouseDown('hobbies', hobbyValue)}
-                                  onMouseUp={handleInterestMouseUp}
-                                  onMouseLeave={handleInterestMouseUp}
-                                  onTouchStart={() => handleInterestMouseDown('hobbies', hobbyValue)}
-                                  onTouchEnd={handleInterestMouseUp}
-                                  className={`relative p-3 rounded-lg border-2 transition-colors text-left ${
-                                    status === 'mandatory'
-                                      ? 'border-green-500 bg-green-50'
-                                      : status === 'dealbreaker'
-                                      ? 'border-red-500 bg-red-50'
-                                      : formData.hobbies['Games']?.includes(fullValue)
-                                      ? 'border-purple-600 bg-purple-100 text-purple-900'
-                                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  {formData.hobbies['Games']?.includes(fullValue) && !status && (
-                                    <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                                      <Check className="w-4 h-4 text-white" />
-                                    </div>
-                                  )}
-                                  {status === 'mandatory' && (
-                                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                      <span className="text-white text-xs">⭐</span>
-                                    </div>
-                                  )}
-                                  {status === 'dealbreaker' && (
-                                    <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                      <X className="w-4 h-4 text-white" />
-                                    </div>
-                                  )}
-                                  {item}
-                                </button>
-                              );
-                            })}
-                          </div>
+              <SectionDropdown 
+                 title="🎮 Games" 
+                 isOpen={expandedEntertainment === 'Games'} 
+                 onToggle={() => setExpandedEntertainment(expandedEntertainment === 'Games' ? null : 'Games')}
+              >
+                  <div className="space-y-4">
+                    {Object.entries({
+                      'Card Games': ['52 Cards/Standard Deck', 'Magic: The Gathering', 'Pokemon', 'Uno', 'Yu-Gi-Oh', 'Other'],
+                      'Board Games': ['Classic', 'Cooperative', 'Modern', 'Party Games', 'Strategy', 'Table Top RPG', 'Other'],
+                      'Video Games': ['Action', 'FPS', 'Horror', 'MMORPG', 'MOBA', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Other'],
+                      'Other': ['Trivia', 'Verbal Games', 'Word Games', 'Other']
+                    }).map(([subcat, items]) => (
+                      <div key={subcat}>
+                        <p className="text-purple-900 mb-2">{subcat}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {items.map(item => {
+                            const fullValue = `${subcat}: ${item}`;
+                            const hobbyValue = `Games:${fullValue}`; 
+                            const status = getInterestStatus('hobbies', hobbyValue);
+                            
+                            return (
+                              <button
+                                key={item}
+                                onClick={() => updateHobbySubcategory('Games', fullValue)}
+                                onMouseDown={() => handleInterestMouseDown('hobbies', hobbyValue)}
+                                onMouseUp={handleInterestMouseUp}
+                                onMouseLeave={handleInterestMouseUp}
+                                onTouchStart={() => handleInterestMouseDown('hobbies', hobbyValue)}
+                                onTouchEnd={handleInterestMouseUp}
+                                className={`relative p-3 rounded-lg border-2 transition-colors text-left ${
+                                  status === 'mandatory'
+                                    ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                                    : status === 'dealbreaker'
+                                    ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-gray-900 dark:text-gray-100'
+                                    : formData.hobbies['Games']?.includes(fullValue)
+                                    ? 'border-purple-600 dark:border-purple-500 bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-200'
+                                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                              >
+                                {formData.hobbies['Games']?.includes(fullValue) && !status && (
+                                  <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                                    <Check className="w-4 h-4 text-white" />
+                                  </div>
+                                )}
+                                {status === 'mandatory' && (
+                                  <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-xs">⭐</span>
+                                  </div>
+                                )}
+                                {status === 'dealbreaker' && (
+                                  <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                    <X className="w-4 h-4 text-white" />
+                                  </div>
+                                )}
+                                {item}
+                              </button>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-
-              {/* Music Performing */}
-              <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedMusicPerforming(!expandedMusicPerforming)}
-                  className={`w-full p-4 flex items-center justify-between transition-colors ${
-                    formData.musicPerforming.length > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-900">🎤 Music (Performing)</span>
-                    {formData.musicPerforming.length > 0 && (
-                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full">
-                        {formData.musicPerforming.length}
-                      </span>
-                    )}
-                  </div>
-                  {expandedMusicPerforming ? <ChevronUp className="w-5 h-5 text-gray-900" /> : <ChevronDown className="w-5 h-5 text-gray-900" />}
-                </button>
-                
-                {expandedMusicPerforming && (
-                  <div className="p-4 bg-gray-50 border-t-2 border-gray-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      {['DJ 🎧', 'Attending Concerts 🎵', 'Writing Music ✍️', 'Being in a Band 🎸', 'Playing an Instrument 🎹', 'Singing 🎤', 'Music Production 🎚️', 'No Preference', 'Other'].map(option => {
-                        const status = getInterestStatus('musicPerforming', option);
-                        return (
-                          <button
-                            key={option}
-                            onClick={() => toggleArrayItem('musicPerforming', option)}
-                            onMouseDown={() => handleInterestMouseDown('musicPerforming', option)}
-                            onMouseUp={handleInterestMouseUp}
-                            onMouseLeave={handleInterestMouseUp}
-                            onTouchStart={() => handleInterestMouseDown('musicPerforming', option)}
-                            onTouchEnd={handleInterestMouseUp}
-                            className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
-                              status === 'mandatory' 
-                                ? 'border-green-500 bg-green-50'
-                                : status === 'dealbreaker'
-                                ? 'border-red-500 bg-red-50'
-                                : formData.musicPerforming.includes(option)
-                                ? 'border-purple-600 bg-purple-50'
-                                : 'border-gray-200 bg-white'
-                            }`}
-                          >
-                            {formData.musicPerforming.includes(option) && !status && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {status === 'mandatory' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-xs">⭐</span>
-                              </div>
-                            )}
-                            {status === 'dealbreaker' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                <X className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Music Listening */}
-              <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedMusicListening(!expandedMusicListening)}
-                  className={`w-full p-4 flex items-center justify-between transition-colors ${
-                    formData.musicListening.length > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-900">🎵 Music (Listening)</span>
-                    {formData.musicListening.length > 0 && (
-                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full">
-                        {formData.musicListening.length}
-                      </span>
-                    )}
-                  </div>
-                  {expandedMusicListening ? <ChevronUp className="w-5 h-5 text-gray-900" /> : <ChevronDown className="w-5 h-5 text-gray-900" />}
-                </button>
-                
-                {expandedMusicListening && (
-                  <div className="p-4 bg-gray-50 border-t-2 border-gray-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      {['Alternative', 'Blues', 'Classical', 'Country', 'Disco', 'EDM', 'Electronic', 'Folk', 'Hip Hop', 'Indie', 'Jazz', 'K-Pop', 'Latin', 'Metal', 'Pop', 'Punk', 'R&B', 'Reggae', 'Rock', 'Soul', 'No Preference', 'Other'].map(option => {
-                        const status = getInterestStatus('musicListening', option);
-                        return (
-                          <button
-                            key={option}
-                            onClick={() => toggleArrayItem('musicListening', option)}
-                            onMouseDown={() => handleInterestMouseDown('musicListening', option)}
-                            onMouseUp={handleInterestMouseUp}
-                            onMouseLeave={handleInterestMouseUp}
-                            onTouchStart={() => handleInterestMouseDown('musicListening', option)}
-                            onTouchEnd={handleInterestMouseUp}
-                            className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
-                              status === 'mandatory' 
-                                ? 'border-green-500 bg-green-50'
-                                : status === 'dealbreaker'
-                                ? 'border-red-500 bg-red-50'
-                                : formData.musicListening.includes(option)
-                                ? 'border-purple-600 bg-purple-50'
-                                : 'border-gray-200 bg-white'
-                            }`}
-                          >
-                            {formData.musicListening.includes(option) && !status && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {status === 'mandatory' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-xs">⭐</span>
-                              </div>
-                            )}
-                            {status === 'dealbreaker' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                <X className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              </SectionDropdown>
 
               {/* Movies & TV */}
-              <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpandedMoviesTV(!expandedMoviesTV)}
-                  className={`w-full p-4 flex items-center justify-between transition-colors ${
-                    formData.moviesTV.length > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-900">🎬 Movies & TV</span>
-                    {formData.moviesTV.length > 0 && (
-                      <span className="bg-purple-600 text-white px-2 py-1 rounded-full">
-                        {formData.moviesTV.length}
-                      </span>
-                    )}
+              <SectionDropdown 
+                 title="🎬 Movies & TV" 
+                 isOpen={expandedEntertainment === 'Movies'} 
+                 onToggle={() => setExpandedEntertainment(expandedEntertainment === 'Movies' ? null : 'Movies')}
+              >
+                  <div className="grid grid-cols-2 gap-3">
+                    {['Action', 'Anime', 'Artistic', 'Comedy', 'Cooking TV', 'Documentary', 'Drama', 'Fantasy', 'Foreign Films', 'Horror', 'Mystery', 'Reality TV', 'Retro', 'Romance', 'Sci-Fi', 'Shopping TV', 'Super Hero', 'Thriller', 'True Crime', 'No Preference', 'Other'].map(option => {
+                      const status = getInterestStatus('moviesTV', option);
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => toggleArrayItem('moviesTV', option)}
+                          onMouseDown={() => handleInterestMouseDown('moviesTV', option)}
+                          onMouseUp={handleInterestMouseUp}
+                          onMouseLeave={handleInterestMouseUp}
+                          onTouchStart={() => handleInterestMouseDown('moviesTV', option)}
+                          onTouchEnd={handleInterestMouseUp}
+                          className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
+                            status === 'mandatory' 
+                              ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                              : status === 'dealbreaker'
+                              ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-gray-900 dark:text-gray-100'
+                              : formData.moviesTV.includes(option)
+                              ? 'border-purple-600 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                          }`}
+                        >
+                          {formData.moviesTV.includes(option) && !status && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {status === 'mandatory' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">⭐</span>
+                            </div>
+                          )}
+                          {status === 'dealbreaker' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                              <X className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {option}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {expandedMoviesTV ? <ChevronUp className="w-5 h-5 text-gray-900" /> : <ChevronDown className="w-5 h-5 text-gray-900" />}
-                </button>
-                
-                {expandedMoviesTV && (
-                  <div className="p-4 bg-gray-50 border-t-2 border-gray-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      {['Action', 'Animation', 'Artistic', 'Comedy', 'Cooking TV', 'Documentary', 'Drama', 'Fantasy', 'Foreign Films', 'Horror', 'Reality TV', 'Retro', 'Romance', 'Sci-Fi', 'Shopping TV', 'Superhero', 'Thriller', 'Other'].map(option => {
-                        const status = getInterestStatus('moviesTV', option);
-                        return (
-                          <button
-                            key={option}
-                            onClick={() => toggleArrayItem('moviesTV', option)}
-                            onMouseDown={() => handleInterestMouseDown('moviesTV', option)}
-                            onMouseUp={handleInterestMouseUp}
-                            onMouseLeave={handleInterestMouseUp}
-                            onTouchStart={() => handleInterestMouseDown('moviesTV', option)}
-                            onTouchEnd={handleInterestMouseUp}
-                            className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
-                              status === 'mandatory' 
-                                ? 'border-green-500 bg-green-50'
-                                : status === 'dealbreaker'
-                                ? 'border-red-500 bg-red-50'
-                                : formData.moviesTV.includes(option)
-                                ? 'border-purple-600 bg-purple-50'
-                                : 'border-gray-200 bg-white'
-                            }`}
-                          >
-                            {formData.moviesTV.includes(option) && !status && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {status === 'mandatory' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-xs">⭐</span>
-                              </div>
-                            )}
-                            {status === 'dealbreaker' && (
-                              <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                                <X className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
+              </SectionDropdown>
+
+              {/* Music Performing */}
+              <SectionDropdown 
+                 title="🎤 Music (Performing)" 
+                 isOpen={expandedEntertainment === 'MusicPerforming'} 
+                 onToggle={() => setExpandedEntertainment(expandedEntertainment === 'MusicPerforming' ? null : 'MusicPerforming')}
+              >
+                  <div className="grid grid-cols-2 gap-3">
+                    {['DJ 🎧', 'Attending Concerts 🎵', 'Writing Music ✍️', 'Being in a Band 🎸', 'Playing an Instrument 🎹', 'Singing 🎤', 'Music Production 🎚️', 'No Preference', 'Other'].map(option => {
+                      const status = getInterestStatus('musicPerforming', option);
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => toggleArrayItem('musicPerforming', option)}
+                          onMouseDown={() => handleInterestMouseDown('musicPerforming', option)}
+                          onMouseUp={handleInterestMouseUp}
+                          onMouseLeave={handleInterestMouseUp}
+                          onTouchStart={() => handleInterestMouseDown('musicPerforming', option)}
+                          onTouchEnd={handleInterestMouseUp}
+                          className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
+                            status === 'mandatory' 
+                              ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                              : status === 'dealbreaker'
+                              ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-gray-900 dark:text-gray-100'
+                              : formData.musicPerforming.includes(option)
+                              ? 'border-purple-600 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                          }`}
+                        >
+                          {formData.musicPerforming.includes(option) && !status && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {status === 'mandatory' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">⭐</span>
+                            </div>
+                          )}
+                          {status === 'dealbreaker' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                              <X className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {option}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
+              </SectionDropdown>
+
+              {/* Music Listening */}
+              <SectionDropdown 
+                 title="🎵 Music (Listening)" 
+                 isOpen={expandedEntertainment === 'MusicListening'} 
+                 onToggle={() => setExpandedEntertainment(expandedEntertainment === 'MusicListening' ? null : 'MusicListening')}
+              >
+                  <div className="grid grid-cols-2 gap-3">
+                    {['Alternative', 'Blues', 'Classical', 'Country', 'Disco', 'EDM', 'Electronic', 'Folk', 'Hip Hop', 'Indie', 'Jazz', 'K-Pop', 'Latin', 'Metal', 'Pop', 'Punk', 'R&B', 'Reggae', 'Rock', 'Soul', 'No Preference', 'Other'].map(option => {
+                      const status = getInterestStatus('musicListening', option);
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => toggleArrayItem('musicListening', option)}
+                          onMouseDown={() => handleInterestMouseDown('musicListening', option)}
+                          onMouseUp={handleInterestMouseUp}
+                          onMouseLeave={handleInterestMouseUp}
+                          onTouchStart={() => handleInterestMouseDown('musicListening', option)}
+                          onTouchEnd={handleInterestMouseUp}
+                          className={`relative p-3 rounded-xl border-2 text-left transition-colors ${
+                            status === 'mandatory' 
+                              ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100'
+                              : status === 'dealbreaker'
+                              ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-gray-900 dark:text-gray-100'
+                              : formData.musicListening.includes(option)
+                              ? 'border-purple-600 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-gray-900 dark:text-gray-100'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                          }`}
+                        >
+                          {formData.musicListening.includes(option) && !status && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {status === 'mandatory' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">⭐</span>
+                            </div>
+                          )}
+                          {status === 'dealbreaker' && (
+                            <div className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                              <X className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+              </SectionDropdown>
             </div>
           )}
 
-          {/* Step 9: Dealbreakers */}
-          {currentStep === 9 && (
+          {/* Step 5: Dealbreakers */}
+          {currentStep === 5 && (
             <div className="space-y-6">
               <div className="space-y-3">
                 <label className="text-gray-900">Dealbreakers (Optional)</label>
@@ -1923,8 +2591,10 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                       onClick={() => toggleArrayItem('dealbreakers', option)}
                       className={`relative p-4 rounded-xl border-2 transition-colors ${
                         formData.dealbreakers.includes(option)
-                          ? option === 'Not Picky' ? 'border-green-600 bg-green-50' : 'border-red-600 bg-red-50'
-                          : 'border-gray-200 bg-white'
+                          ? option === 'Not Picky' 
+                            ? 'border-green-600 dark:border-green-500 bg-green-50 dark:bg-green-900/30 text-gray-900 dark:text-gray-100' 
+                            : 'border-red-600 dark:border-red-500 bg-red-50 dark:bg-red-900/30 text-gray-900 dark:text-gray-100'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                       }`}
                     >
                       {formData.dealbreakers.includes(option) && (
@@ -1942,29 +2612,27 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
             </div>
           )}
 
-          {/* Step 10: What you want */}
-          {currentStep === 10 && (
+          {/* Step 6: What you want */}
+          {currentStep === 6 && (
             <div className="space-y-6">
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
-                <p className="text-purple-900">💭 What I Am Hoping For</p>
-                <p className="text-purple-600 mt-2">These preferences won't affect your compatibility score, but will be visible to potential matches to help them understand what you're looking for.</p>
-              </div>
+              <HeaderTip title="What I Am Hoping For">
+                 <p className="mb-2">These preferences won't affect your compatibility score, but will be visible to potential matches to help them understand what you're looking for.</p>
+                 <hr className="border-blue-200 my-2" />
+                 <p className="font-medium">Hold any desire to mark it as:</p>
+                 <ul className="mt-1 space-y-1 ml-2">
+                   <li><span className="font-semibold">Mandatory ⭐</span> - This is a must-have</li>
+                   <li><span className="font-semibold">Dealbreaker ⛔</span> - Won't match without this</li>
+                   <li><span className="font-semibold">Highlight ✨</span> - Top 4 shown on your profile (max 4)</li>
+                 </ul>
+              </HeaderTip>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
-                <p className="text-blue-900 text-sm">💡 Hold any desire to mark it as:</p>
-                <ul className="mt-2 space-y-1 text-blue-800 text-sm ml-4">
-                  <li><span className="font-semibold">Mandatory ⭐</span> - This is a must-have</li>
-                  <li><span className="font-semibold">Dealbreaker ⛔</span> - Won't match without this</li>
-                  <li><span className="font-semibold">Highlight ✨</span> - Top 4 shown on your profile (max 4)</li>
-                </ul>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-gray-900">I want someone who enjoys... 🎯</label>
-                <div className="grid grid-cols-1 gap-3">
-                  {['Activism 📢', 'Acting goofy 🤪', 'Alone time 🧘', 'Baking 🧁', 'Being carefree 😌', 'Being the center of attention 🌟', 'Cooking 👨‍🍳', 'Dancing 💃', 'Deep conversations 💭', 'Dining in 🏠', 'Dining out 🍽️', 'Dressing up 👔', 'Going on walks 🚶', 'Holds the door open for me 🚪', 'Lots of time spent together 💑', 'Ordering out 📦', 'Partying 🎉', 'Phone conversations 📞', 'Relaxing at home 🛋️', 'Saving money 💰', 'Shopping 🛍️', 'Social media 📱', 'Tells jokes 😄', 'Tells me "good morning"/"goodnight" everyday 🌅', 'Tells stories 📖', 'Texting 💬', 'Traveling ✈️', 'A clean home 🧹', 'Who surprises me with gifts/flowers 🎁']
-                    .slice(0, showAllDesiresActivities ? undefined : 6)
-                    .map(option => {
+              <SectionDropdown 
+                 title="I want someone who enjoys... 🎯" 
+                 isOpen={expandedSections.desiresActivities} 
+                 onToggle={() => toggleSection('desiresActivities')}
+              >
+                  <div className="grid grid-cols-1 gap-3">
+                    {['Activism 📢', 'Acting goofy 🤪', 'Alone time 🧘', 'Baking 🧁', 'Being carefree 😌', 'Being the center of attention 🌟', 'Cooking 👨‍🍳', 'Dancing 💃', 'Deep conversations 💭', 'Dining in 🏠', 'Dining out 🍽️', 'Dressing up 👔', 'Going on walks 🚶', 'Holds the door open for me 🚪', 'Lots of time spent together 💑', 'Ordering out 📦', 'Partying 🎉', 'Phone conversations 📞', 'Relaxing at home 🛋️', 'Saving money 💰', 'Shopping 🛍️', 'Social media 📱', 'Tells jokes 😄', 'Tells me "good morning"/"goodnight" everyday 🌅', 'Tells stories 📖', 'Texting 💬', 'Traveling ✈️', 'A clean home 🧹', 'Who surprises me with gifts/flowers 🎁'].map(option => {
                       const status = getDesireStatus('desiresActivities', option);
                       return (
                         <button
@@ -1997,32 +2665,17 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                         </button>
                       );
                     })}
-                </div>
-                <button
-                  onClick={() => setShowAllDesiresActivities(!showAllDesiresActivities)}
-                  className="w-full flex items-center justify-center gap-2 p-3 text-purple-600 hover:text-purple-700 transition-colors"
-                >
-                  {showAllDesiresActivities ? (
-                    <>
-                      <ChevronUp className="w-5 h-5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-5 h-5" />
-                      Show More (23 more options)
-                    </>
-                  )}
-                </button>
-              </div>
+                  </div>
+              </SectionDropdown>
 
-              <div className="space-y-3">
-                <label className="text-gray-900">I want someone who... ✨</label>
-                <p className="text-gray-600">Select traits that are important to you in a partner</p>
-                <div className="grid grid-cols-1 gap-3">
-                  {['Does not like gender/social norms 🚫', 'Has a job 💼', 'Is a good listener 👂', 'Is a good talker 🗣️', 'Is a homebody 🏡', 'Is a leader 👑', 'Is ambitious 🎯', 'Is comfortable around other people 👥', 'Is competitive 🏆', 'Is emotional 😢', 'Is encouraging 💪', 'Is feminine 👗', 'Is handy 🔧', 'Is masculine 💪', 'Is nurturing 🤱', 'Is okay with a simple routine 🔄', 'Is okay with being a stay-at-home significant other 🏠', 'Is punctual ⏰', 'Is sensitive 💗', 'Is stoic 🗿', 'Is willing to try new things 🌟', 'Lets me lead 👑', 'Likes gender/social norms 👔', 'Prefers monogamy 💑', 'Prefers open relationships 🔓', 'Wants a progressive lifestyle 🌱', 'Wants a traditional lifestyle 🏛️', 'Willing to do household chores 🧹']
-                    .slice(0, showAllDesiresTraits ? undefined : 6)
-                    .map(option => {
+              <SectionDropdown 
+                 title="I want someone who... ✨" 
+                 isOpen={expandedSections.desiresTraits} 
+                 onToggle={() => toggleSection('desiresTraits')}
+              >
+                  <p className="text-gray-600 mb-3 text-sm">Select traits that are important to you in a partner</p>
+                  <div className="grid grid-cols-1 gap-3">
+                    {['Does not like gender/social norms 🚫', 'Has a job 💼', 'Is a good listener 👂', 'Is a good talker 🗣️', 'Is a homebody 🏡', 'Is a leader 👑', 'Is ambitious 🎯', 'Is comfortable around other people 👥', 'Is competitive 🏆', 'Is emotional 😢', 'Is encouraging 💪', 'Is feminine 👗', 'Is handy 🔧', 'Is masculine 💪', 'Is nurturing 🤱', 'Is okay with a simple routine 🔄', 'Is okay with being a stay-at-home significant other 🏠', 'Is punctual ⏰', 'Is sensitive 💗', 'Is stoic 🗿', 'Is willing to try new things 🌟', 'Lets me lead 👑', 'Likes gender/social norms 👔', 'Prefers monogamy 💑', 'Prefers open relationships 🔓', 'Wants a progressive lifestyle 🌱', 'Wants a traditional lifestyle 🏛️', 'Willing to do household chores 🧹'].map(option => {
                       const status = getDesireStatus('desiresTraits', option);
                       return (
                         <button
@@ -2055,23 +2708,24 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
                         </button>
                       );
                     })}
-                </div>
-                <button
-                  onClick={() => setShowAllDesiresTraits(!showAllDesiresTraits)}
-                  className="w-full flex items-center justify-center gap-2 p-3 text-purple-600 hover:text-purple-700 transition-colors"
-                >
-                  {showAllDesiresTraits ? (
-                    <>
-                      <ChevronUp className="w-5 h-5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-5 h-5" />
-                      Show More (22 more options)
-                    </>
-                  )}
-                </button>
+                  </div>
+              </SectionDropdown>
+
+              {/* About You (Optional) - Moved from Step 1 */}
+              <div className="space-y-3 mt-6 pt-6 border-t-2 border-gray-200">
+                <label className="text-gray-900 font-semibold">About You (Optional)</label>
+                <p className="text-gray-600">Tell us a bit about yourself (max 200 characters)</p>
+                <textarea
+                  value={formData.about}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 200) {
+                      updateFormData('about', e.target.value);
+                    }
+                  }}
+                  placeholder="A few words about yourself..."
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-purple-600 outline-none h-32 resize-none"
+                />
+                <p className="text-gray-500">{formData.about.length}/200 characters</p>
               </div>
             </div>
           )}
@@ -2085,6 +2739,15 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
               className="px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 transition-colors"
             >
               Back
+            </button>
+          )}
+          {/* Skip button for optional pages (steps 4-6, not on final step 7) */}
+          {currentStep >= 3 && currentStep < steps.length - 1 && (
+            <button
+              onClick={() => setCurrentStep(steps.length - 1)}
+              className="px-6 py-4 border-2 border-purple-300 text-purple-600 rounded-full hover:bg-purple-50 transition-colors"
+            >
+              Skip for now
             </button>
           )}
           <button
@@ -2112,6 +2775,40 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
         showConfetti={transitionConfig.showConfetti}
       />
 
+      {/* Optional Pages Popup */}
+      {showOptionalPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-gray-900 text-xl font-bold mb-3">Great progress! 🎉</h3>
+            <p className="text-gray-600 mb-6">
+              You can complete these optional sections now, or save them for later in the settings menu.
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowOptionalPopup(false);
+                  setCurrentStep(3);
+                }}
+                className="w-full p-4 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors"
+              >
+                Continue to additional profile building
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowOptionalPopup(false);
+                  setCurrentStep(steps.length - 1);
+                }}
+                className="w-full p-4 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Desire Selection Modal */}
       {showDesireModal && selectedDesire && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2135,12 +2832,12 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
 
               <button
                 onClick={() => handleDesireSpecialAction('dealbreaker')}
-                className="w-full p-4 rounded-xl border-2 border-red-500 bg-red-50 text-left hover:bg-red-100 transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-left hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">⛔</span>
                   <div>
-                    <p className="font-semibold text-gray-900">Dealbreaker</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">Dealbreaker</p>
                     <p className="text-sm text-gray-600">You won't match without this</p>
                   </div>
                 </div>
@@ -2186,26 +2883,26 @@ export function SignUpFlow({ onComplete, initialStep = 0, endStep, mode = 'signu
             <div className="space-y-3">
               <button
                 onClick={() => handleInterestSpecialAction('mandatory')}
-                className="w-full p-4 rounded-xl border-2 border-green-500 bg-green-50 text-left hover:bg-green-100 transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/30 text-left hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">⭐</span>
                   <div>
-                    <p className="font-semibold text-gray-900">Mandatory</p>
-                    <p className="text-sm text-gray-600">This is a must-have for you</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">Mandatory Interest</p>
+                    <p className="text-sm text-gray-600">I specifically want someone who likes this</p>
                   </div>
                 </div>
               </button>
 
               <button
                 onClick={() => handleInterestSpecialAction('dealbreaker')}
-                className="w-full p-4 rounded-xl border-2 border-red-500 bg-red-50 text-left hover:bg-red-100 transition-colors"
+                className="w-full p-4 rounded-xl border-2 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-left hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">⛔</span>
                   <div>
-                    <p className="font-semibold text-gray-900">Dealbreaker</p>
-                    <p className="text-sm text-gray-600">You won't match without this</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">Dealbreaker Interest</p>
+                    <p className="text-sm text-gray-600">I cannot be with someone who likes this</p>
                   </div>
                 </div>
               </button>

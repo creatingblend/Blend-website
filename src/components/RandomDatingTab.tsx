@@ -26,9 +26,20 @@ const mockMatch = {
 export function RandomDatingTab({ onNavigate, onSaveToFriendsList }: RandomDatingTabProps) {
   const [status, setStatus] = useState<MatchStatus>('idle');
   const [pairWithAnyone, setPairWithAnyone] = useState(false);
+  const [pairWithDifferent, setPairWithDifferent] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [userAccepted, setUserAccepted] = useState(false);
   const [friendRequestSent, setFriendRequestSent] = useState(false);
+
+  const displayMatch = pairWithDifferent
+    ? {
+        ...mockMatch,
+        compatibility: 35,
+        sharedInterests: ['Trying New Things'],
+        name: 'Opposite Match',
+        bio: "I'm looking for someone different than me to spice things up!"
+      }
+    : mockMatch;
 
   // Timer countdown
   useEffect(() => {
@@ -70,14 +81,14 @@ export function RandomDatingTab({ onNavigate, onSaveToFriendsList }: RandomDatin
     // Simulate the other person accepting
     setTimeout(() => {
       setStatus('chatting');
-      onNavigate('chat', mockMatch);
+      onNavigate('chat', displayMatch);
     }, 1000);
   };
 
   const handleSaveToFriends = () => {
     setFriendRequestSent(true);
     if (onSaveToFriendsList) {
-      onSaveToFriendsList(mockMatch.id);
+      onSaveToFriendsList(displayMatch.id);
     }
   };
 
@@ -102,16 +113,20 @@ export function RandomDatingTab({ onNavigate, onSaveToFriendsList }: RandomDatin
 
           {/* Pair With Anyone Toggle */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+            {/* Pair With Anyone Toggle */}
+            <div className="flex items-start sm:items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
                 <h3 className="text-gray-900 dark:text-gray-100">Pair With Anyone 🌈</h3>
                 <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
                   Match regardless of dating preferences (great for making friends!)
                 </p>
               </div>
               <button
-                onClick={() => setPairWithAnyone(!pairWithAnyone)}
-                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                onClick={() => {
+                  setPairWithAnyone(!pairWithAnyone);
+                  if (!pairWithAnyone) setPairWithDifferent(false); // Mutually exclusive?
+                }}
+                className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition-colors ${
                   pairWithAnyone ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
                 }`}
               >
@@ -122,10 +137,44 @@ export function RandomDatingTab({ onNavigate, onSaveToFriendsList }: RandomDatin
                 />
               </button>
             </div>
+
+            {/* Pair With Different Toggle */}
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex items-start sm:items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-gray-900 dark:text-gray-100">Explore Differences 🌏</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+                  Pair with someone who has different interests than you (&lt;75% mismatch)
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setPairWithDifferent(!pairWithDifferent);
+                  if (!pairWithDifferent) setPairWithAnyone(false); // Mutually exclusive?
+                }}
+                className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition-colors ${
+                  pairWithDifferent ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                    pairWithDifferent ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
             {pairWithAnyone && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
                 <p className="text-blue-700 dark:text-blue-300 text-sm">
                   💡 You'll be matched with anyone - two straight men could chat, anyone can make friends!
+                </p>
+              </div>
+            )}
+
+            {pairWithDifferent && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                <p className="text-orange-700 dark:text-orange-300 text-sm">
+                  ⚠️ Matching based on differences implies lower compatibility, but can be exciting!
                 </p>
               </div>
             )}
@@ -208,19 +257,19 @@ export function RandomDatingTab({ onNavigate, onSaveToFriendsList }: RandomDatin
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-900 dark:text-gray-100">Compatibility</p>
-                <p className="text-purple-600 dark:text-purple-400">{mockMatch.compatibility}% Match</p>
+                <p className="text-purple-600 dark:text-purple-400">{displayMatch.compatibility}% Match</p>
               </div>
               <div className="text-right">
                 <p className="text-gray-900 dark:text-gray-100">Location</p>
-                <p className="text-gray-600 dark:text-gray-400">{mockMatch.location}</p>
+                <p className="text-gray-600 dark:text-gray-400">{displayMatch.location}</p>
               </div>
             </div>
             <div>
               <p className="text-gray-900 dark:text-gray-100 mb-2">
-                {mockMatch.sharedInterests.length} Shared Interests
+                {displayMatch.sharedInterests.length} Shared Interests
               </p>
               <div className="flex flex-wrap gap-2">
-                {mockMatch.sharedInterests.slice(0, 3).map((interest) => (
+                {displayMatch.sharedInterests.slice(0, 3).map((interest) => (
                   <span
                     key={interest}
                     className="px-3 py-1 bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 rounded-full border border-purple-200 dark:border-purple-700"

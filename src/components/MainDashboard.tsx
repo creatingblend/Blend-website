@@ -10,6 +10,7 @@ import { RandomDatingTab } from './RandomDatingTab';
 import { FriendsListTab } from './FriendsListTab';
 import { UserProfile } from './UserProfile';
 import type { Screen } from '../App';
+import { hasIncompleteProfile } from '../utils/profileCompletion';
 
 const mockMatches = [
   {
@@ -108,7 +109,7 @@ interface MainDashboardProps {
 
 export function MainDashboard({ onNavigate }: MainDashboardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'new' | 'conversations' | 'groups' | 'peer' | 'tutorials' | 'events' | 'random' | 'celebrate' | 'services' | 'friends'>('new');
+  const [activeTab, setActiveTab] = useState<'conversations' | 'groups' | 'peer' | 'tutorials' | 'events' | 'random' | 'celebrate' | 'services' | 'friends'>('conversations');
   const [showFilters, setShowFilters] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -122,8 +123,45 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
   const [useMetric, setUseMetric] = useState(false); // false = miles, true = km
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [showAllSharedInterests, setShowAllSharedInterests] = useState(false);
+  const [viewingNewMatches, setViewingNewMatches] = useState(false);
+
+  // Mock form data - in real app this would come from user context/state
+  const mockFormData = {
+    name: 'User',
+    about: '',
+    age: 25,
+    gender: 'Woman',
+    orientation: ['Men'],
+    race: 'White',
+    languages: [{ language: 'English' }],
+    heightFt: 5,
+    heightIn: 6,
+    weightLbs: 140,
+    exerciseHabits: 'I exercise regularly',
+    religion: 'Christian',
+    politics: ['Moderate'],
+    racePreference: ['No Preference'],
+    relationshipGoal: ['Long-term relationship'],
+    childrenPreference: ['Want someday'],
+    // Missing optional fields to demonstrate incomplete profile
+    military: '',
+    pronouns: [],
+    zodiacSign: '',
+    hobbies: {},
+    favoriteFoods: [],
+    musicPerforming: [],
+    musicListening: [],
+    moviesTV: [],
+    personality: [],
+    dealbreakers: [],
+    desiresActivities: [],
+    desiresTraits: []
+  };
+
+  const profileIncomplete = hasIncompleteProfile(mockFormData);
 
   const currentMatch = mockMatches[currentIndex];
+  const hasNewMatches = mockMatches.length > 0;
 
   const handleLike = () => {
     if (currentIndex < mockMatches.length - 1) {
@@ -152,9 +190,9 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-6 py-2 shrink-0 z-20">
         <div className="max-w-7xl mx-auto grid grid-cols-3 items-center">
           {/* Left: Logo */}
           <div className="flex items-center gap-4">
@@ -177,10 +215,13 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
             </button>
             <button 
               onClick={() => setShowUserProfile(true)}
-              className="w-10 h-10 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center hover:scale-105 transition-transform"
+              className="w-10 h-10 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center hover:scale-105 transition-transform relative"
               title="View Your Profile & Settings"
             >
               <span className="text-xl">👤</span>
+              {profileIncomplete && (
+                <span className="absolute top-0 left-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
             </button>
           </div>
         </div>
@@ -327,21 +368,11 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
       )}
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0 z-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-6 min-w-max">
+          <div className="flex gap-6 min-w-max pr-6">
             <button
-              onClick={() => setActiveTab('new')}
-              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'new'
-                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              New
-            </button>
-            <button
-              onClick={() => setActiveTab('conversations')}
+              onClick={() => { setActiveTab('conversations'); setViewingNewMatches(false); }}
               className={`py-4 border-b-2 transition-colors whitespace-nowrap relative ${
                 activeTab === 'conversations'
                   ? 'border-purple-600 text-purple-600 dark:text-purple-400'
@@ -366,6 +397,46 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
               Groups
             </button>
             <button
+              onClick={() => setActiveTab('random')}
+              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'random'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Random Chat
+            </button>
+            <button
+              onClick={() => setActiveTab('friends')}
+              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'friends'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Friends List
+            </button>
+            <button
+              onClick={() => setActiveTab('events')}
+              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'events'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Local Events
+            </button>
+            <button
+              onClick={() => setActiveTab('celebrate')}
+              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'celebrate'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Celebrate 🎉
+            </button>
+            <button
               onClick={() => setActiveTab('peer')}
               className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'peer'
@@ -386,36 +457,6 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
               Tutorials
             </button>
             <button
-              onClick={() => setActiveTab('events')}
-              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'events'
-                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Local Events
-            </button>
-            <button
-              onClick={() => setActiveTab('random')}
-              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'random'
-                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Random Chat
-            </button>
-            <button
-              onClick={() => setActiveTab('celebrate')}
-              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'celebrate'
-                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Celebrate 🎉
-            </button>
-            <button
               onClick={() => setActiveTab('services')}
               className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'services'
@@ -425,276 +466,286 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
             >
               Services 🤝
             </button>
-            <button
-              onClick={() => setActiveTab('friends')}
-              className={`py-4 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'friends'
-                  ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Friends List
-            </button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* Left: Main Content */}
           <div>
-          {activeTab === 'new' ? (
-            <div className="max-w-md mx-auto">
-              {/* Match Card */}
-              <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                {/* Compatibility Badge */}
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
-                  <div className="flex items-center justify-between mb-4">
-                    <span>Compatibility Match</span>
-                    <span className="text-3xl">{currentMatch.compatibility}%</span>
-                  </div>
-                  <div className="w-full bg-white/30 rounded-full h-2">
-                    <div
-                      className="bg-white rounded-full h-2 transition-all"
-                      style={{ width: `${currentMatch.compatibility}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Profile Info */}
-                <div className="p-6 space-y-6">
-                  {/* Mystery Avatar */}
-                  <div className="flex justify-center">
-                    <div className="w-32 h-32 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center">
-                      <User className="w-16 h-16 text-purple-600" />
-                    </div>
-                  </div>
-
-                  {/* Basic Info */}
-                  <div className="text-center space-y-2">
-                    <h2 className="text-gray-900">{currentMatch.name}</h2>
-                    <p className="text-gray-600">{currentMatch.age} years old • {currentMatch.location}</p>
-                    {currentMatch.wantsToInitiate && (
-                      <p className="text-purple-600 font-semibold">💌 Wants to initiate conversation with you</p>
-                    )}
-                    <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-600 mt-2">
-                      {currentMatch.military && (
-                        <span className="bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                          🪖 {currentMatch.military}
-                        </span>
-                      )}
-                      {currentMatch.pronouns && currentMatch.pronouns.length > 0 && (
-                        <span className="bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                          {currentMatch.pronouns.join(', ')}
-                        </span>
-                      )}
-                      {currentMatch.zodiac && (
-                        <span className="bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
-                          {currentMatch.zodiac}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Shared Interests */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-gray-900">Shared Interests</h3>
-                      {currentMatch.sharedInterests.length > (currentMatch.mandatoryInterests?.length || 3) && (
-                        <button
-                          onClick={() => setShowAllSharedInterests(!showAllSharedInterests)}
-                          className="text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1"
-                        >
-                          {showAllSharedInterests ? (
-                            <>
-                              <ChevronUp className="w-4 h-4" />
-                              <span className="text-sm">Show Less</span>
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="w-4 h-4" />
-                              <span className="text-sm">Show More</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {(showAllSharedInterests 
-                        ? currentMatch.sharedInterests 
-                        : currentMatch.mandatoryInterests || currentMatch.sharedInterests.slice(0, 3)
-                      ).map((interest) => (
-                        <span
-                          key={interest}
-                          className="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full border border-purple-200"
-                        >
-                          {interest}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bio */}
-                  <div className="space-y-2">
-                    <h3 className="text-gray-900">About</h3>
-                    <p className="text-gray-600">{currentMatch.bio}</p>
-                  </div>
-
-                  {/* Desires */}
-                  {currentMatch.desires && currentMatch.desires.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-gray-900">What They're Looking For</h3>
-                        <button
-                          onClick={() => setShowAdditionalDetails(!showAdditionalDetails)}
-                          className="text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1"
-                        >
-                          {showAdditionalDetails ? (
-                            <>
-                              <ChevronUp className="w-4 h-4" />
-                              <span className="text-sm">Show Less</span>
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="w-4 h-4" />
-                              <span className="text-sm">Show More</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {currentMatch.desires.slice(0, showAdditionalDetails ? undefined : 4).map((desire) => (
-                          <span
-                            key={desire}
-                            className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full"
-                          >
-                            {desire}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-center gap-6 mt-8">
-                <button
-                  onClick={handlePass}
-                  className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-                >
-                  <X className="w-8 h-8 text-red-500" />
-                </button>
-                <button
-                  onClick={handleLike}
-                  className="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-                >
-                  <Heart className="w-10 h-10 text-white fill-white" />
-                </button>
-              </div>
-            </div>
-          ) : activeTab === 'conversations' ? (
+          {activeTab === 'conversations' ? (
             <div className="max-w-4xl mx-auto">
               {/* Conversation Requests Section */}
-              {mockConversationRequests.length > 0 && (
+              {mockConversationRequests.length > 0 && !viewingNewMatches && (
                 <div className="mb-8">
                   <div className="flex items-center gap-3 mb-4">
                     <Bell className="w-6 h-6 text-purple-600" />
                     <div>
-                      <h2 className="text-gray-900">💌 Conversation Requests</h2>
-                      <p className="text-gray-600 mt-1">{mockConversationRequests.length} {mockConversationRequests.length === 1 ? 'person wants' : 'people want'} to chat with you!</p>
+                      <h2 className="text-gray-900 dark:text-gray-100 text-xl font-bold">Conversation Requests</h2>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">People who want to chat with you</p>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  
+                  <div className="grid gap-4">
                     {mockConversationRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 rounded-2xl p-6 shadow-sm"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="relative">
-                            <div className="w-16 h-16 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center flex-shrink-0">
-                              <User className="w-8 h-8 text-purple-600" />
-                            </div>
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs">!</span>
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="text-gray-900 truncate">{request.name}</h3>
-                              <span className="text-purple-600 ml-2 flex-shrink-0 font-bold">{request.compatibility}%</span>
-                            </div>
-                            <p className="text-gray-500 text-sm mb-2">Requested {request.requestedAt}</p>
-                            <div className="flex flex-wrap gap-1 mb-3">
-                              {request.sharedInterests.slice(0, 2).map((interest) => (
-                                <span key={interest} className="text-purple-600 bg-purple-100 px-2 py-1 rounded">
-                                  {interest}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => onNavigate('chat', request)}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-full hover:opacity-90 transition-opacity"
-                              >
-                                ✅ Accept
-                              </button>
-                              <button
-                                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-300 transition-colors"
-                              >
-                                ❌ Decline
-                              </button>
-                            </div>
+                      <div key={request.id} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col items-center text-center relative">
+                        <div className="w-20 h-20 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-4">
+                          <span className="text-3xl">👤</span>
+                        </div>
+                        
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg mb-1">{request.name}</h3>
+                        
+                        <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1 mb-6 w-full">
+                          <p className="font-medium text-purple-600 dark:text-purple-400">{request.compatibility}% Compatible</p>
+                          <div className="flex items-center justify-center gap-2">
+                             <span>{request.age}y/o</span>
+                             <span>•</span>
+                             <span>{request.location}</span>
                           </div>
                         </div>
+
+                        <button 
+                          onClick={() => onNavigate('profile', { ...request, isConversationRequest: true })}
+                          className="px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium w-full"
+                        >
+                          View Profile
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Active Conversations */}
-              <div className="mb-6">
-                <h2 className="text-gray-900">Your Matches</h2>
-                <p className="text-gray-600 mt-1">Start conversations and get to know each other</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {mockMatches.map((match) => (
+              {/* Check New Matches Button */}
+              {!viewingNewMatches && (
+                <div className="mb-8">
                   <button
-                    key={match.id}
-                    onClick={() => onNavigate('chat', match)}
-                    className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow text-left"
+                    onClick={() => hasNewMatches && setViewingNewMatches(true)}
+                    disabled={!hasNewMatches}
+                    className={`w-full py-4 rounded-xl shadow-sm border transition-all flex items-center justify-center gap-2 font-semibold ${
+                      hasNewMatches
+                        ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700 shadow-md'
+                        : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                    }`}
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="w-8 h-8 text-purple-600" />
+                    <span className="text-xl">✨</span>
+                    Check New Potential Matches
+                    {hasNewMatches && (
+                      <span className="bg-white text-purple-600 text-xs px-2 py-0.5 rounded-full ml-2">
+                        {mockMatches.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* New Matches Content (formerly 'new' tab) */}
+              {viewingNewMatches ? (
+                <div className="max-w-md mx-auto relative">
+                  <button 
+                    onClick={() => setViewingNewMatches(false)}
+                    className="absolute -top-12 left-0 text-purple-600 hover:text-purple-700 flex items-center gap-1 font-medium"
+                  >
+                    ← Back to Conversations
+                  </button>
+                  
+                  {/* Match Card */}
+                  <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+                    {/* Compatibility Badge */}
+                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
+                      <div className="flex items-center justify-between mb-4">
+                        <span>Compatibility Match</span>
+                        <span className="text-3xl">{currentMatch.compatibility}%</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-gray-900 truncate">{match.name}</h3>
-                          <span className="text-purple-600 ml-2 flex-shrink-0">{match.compatibility}%</span>
+                      <div className="w-full bg-white/30 rounded-full h-2">
+                        <div
+                          className="bg-white rounded-full h-2 transition-all"
+                          style={{ width: `${currentMatch.compatibility}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Profile Info */}
+                    <div className="p-6 space-y-6">
+                      {/* Mystery Avatar */}
+                      <div className="flex justify-center">
+                        <div className="w-32 h-32 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center">
+                          <User className="w-16 h-16 text-purple-600" />
                         </div>
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {match.sharedInterests.slice(0, 2).map((interest) => (
-                            <span key={interest} className="text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                      </div>
+
+                      {/* Basic Info */}
+                      <div className="text-center space-y-2">
+                        <h2 className="text-gray-900">{currentMatch.name}</h2>
+                        <p className="text-gray-600">{currentMatch.age} years old • {currentMatch.location}</p>
+                        {currentMatch.wantsToInitiate && (
+                          <p className="text-purple-600 font-semibold">💌 Wants to initiate conversation with you</p>
+                        )}
+                        <div className="flex flex-wrap justify-center gap-2 text-sm text-gray-600 mt-2">
+                          {currentMatch.military && (
+                            <span className="bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                              🪖 {currentMatch.military}
+                            </span>
+                          )}
+                          {currentMatch.pronouns && currentMatch.pronouns.length > 0 && (
+                            <span className="bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                              {currentMatch.pronouns.join(', ')}
+                            </span>
+                          )}
+                          {currentMatch.zodiac && (
+                            <span className="bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
+                              {currentMatch.zodiac}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Shared Interests */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-gray-900">Shared Interests</h3>
+                          {currentMatch.sharedInterests.length > (currentMatch.mandatoryInterests?.length || 3) && (
+                            <button
+                              onClick={() => setShowAllSharedInterests(!showAllSharedInterests)}
+                              className="text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1"
+                            >
+                              {showAllSharedInterests ? (
+                                <>
+                                  <ChevronUp className="w-4 h-4" />
+                                  <span className="text-sm">Show Less</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-4 h-4" />
+                                  <span className="text-sm">Show More</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(showAllSharedInterests 
+                            ? currentMatch.sharedInterests 
+                            : currentMatch.mandatoryInterests || currentMatch.sharedInterests.slice(0, 3)
+                          ).map((interest) => (
+                            <span
+                              key={interest}
+                              className="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full border border-purple-200"
+                            >
                               {interest}
                             </span>
                           ))}
                         </div>
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center gap-2">
-                            <MessageCircle className="w-4 h-4 text-gray-400" />
-                            <span className="text-gray-500">Active conversation</span>
-                          </div>
-                          <span className="text-green-600">⏱️ {match.conversationDuration}</span>
-                        </div>
                       </div>
+
+                      {/* Bio */}
+                      <div className="space-y-2">
+                        <h3 className="text-gray-900">About</h3>
+                        <p className="text-gray-600">{currentMatch.bio}</p>
+                      </div>
+
+                      {/* Desires */}
+                      {currentMatch.desires && currentMatch.desires.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-gray-900">What They're Looking For</h3>
+                            <button
+                              onClick={() => setShowAdditionalDetails(!showAdditionalDetails)}
+                              className="text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-1"
+                            >
+                              {showAdditionalDetails ? (
+                                <>
+                                  <ChevronUp className="w-4 h-4" />
+                                  <span className="text-sm">Show Less</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-4 h-4" />
+                                  <span className="text-sm">Show More</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {currentMatch.desires.slice(0, showAdditionalDetails ? undefined : 4).map((desire) => (
+                              <span
+                                key={desire}
+                                className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full"
+                              >
+                                {desire}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </button>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-center gap-6 mt-8">
+                    <button
+                      onClick={handlePass}
+                      className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+                    >
+                      <X className="w-8 h-8 text-red-500" />
+                    </button>
+                    <button
+                      onClick={handleLike}
+                      className="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+                    >
+                      <Heart className="w-10 h-10 text-white fill-white" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Active Conversations List (placeholder for now as user just asked to move 'new' here) */
+                <div className="space-y-4">
+                  {/* Existing conversations would go here */}
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-xl text-center">
+                    <p className="text-purple-800 dark:text-purple-300">
+                      Your active conversations will appear here.
+                      <br/>
+                      Check potential matches to start connecting!
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'groups' ? (
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-gray-900 dark:text-gray-100 font-bold text-2xl">Interest Groups</h2>
+                  <p className="text-gray-600 dark:text-gray-400">Join communities based on your passions</p>
+                </div>
+                <button
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  Create Group
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {predefinedGroups.map((group) => (
+                  <div key={group.id} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center text-2xl">
+                        {group.name.split(' ')[0]}
+                      </div>
+                      <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full text-xs">
+                        {group.members} members
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{group.name}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{group.description}</p>
+                    <button className="w-full py-2 border-2 border-purple-600 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                      Join Group
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -866,56 +917,7 @@ export function MainDashboard({ onNavigate }: MainDashboardProps) {
             </div>
           ) : activeTab === 'friends' ? (
             <FriendsListTab onNavigate={onNavigate} />
-          ) : (
-            <div className="max-w-4xl mx-auto">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-gray-900 dark:text-gray-100">Join Groups</h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">Connect with like-minded people</p>
-                </div>
-                <button
-                  onClick={() => setShowCreateGroupModal(true)}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-full hover:opacity-90 transition-opacity"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Group
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {predefinedGroups.map((group) => (
-                  <button
-                    key={group.id}
-                    onClick={() => setShowPremiumModal(true)}
-                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow text-left"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-purple-200 to-pink-200 dark:from-purple-800 dark:to-pink-800 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Users className="w-8 h-8 text-purple-600 dark:text-purple-300" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-gray-900 dark:text-gray-100 truncate">{group.name}</h3>
-                          <span className="text-purple-600 dark:text-purple-400 ml-2 flex-shrink-0">{group.members} members</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {group.description.split(', ').slice(0, 2).map((desc) => (
-                            <span key={desc} className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded">
-                              {desc}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <Lock className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-500 dark:text-gray-400">Premium Feature</span>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          ) : null}
           </div>
         </div>
       </div>

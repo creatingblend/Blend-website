@@ -1,12 +1,25 @@
-import { ArrowLeft, MapPin, Briefcase, GraduationCap, Heart, Star, Sparkles, Lock } from 'lucide-react';
+import { ArrowLeft, MapPin, Heart, Star, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
 
 interface ProfileRevealProps {
   match: any;
   onBack: () => void;
+  onAccept?: () => void;
+  onReject?: () => void;
 }
 
-export function ProfileReveal({ match, onBack }: ProfileRevealProps) {
-  const revealProgress = 60; // 60% revealed
+export function ProfileReveal({ match, onBack, onAccept, onReject }: ProfileRevealProps) {
+  const [expandedSections, setExpandedSections] = useState({
+    sharedInterests: true,
+    personality: true
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -23,142 +36,124 @@ export function ProfileReveal({ match, onBack }: ProfileRevealProps) {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Reveal Progress */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              <span className="text-purple-900">Reveal Progress</span>
-            </div>
-            <span className="text-purple-600">{revealProgress}%</span>
+        {/* Avatar */}
+        <div className="flex justify-center">
+          <div className="w-32 h-32 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+            <User className="w-16 h-16 text-purple-600" />
           </div>
-          <div className="w-full bg-purple-200 rounded-full h-3">
-            <div
-              className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-full h-3 transition-all"
-              style={{ width: `${revealProgress}%` }}
-            />
-          </div>
-          <p className="text-purple-700">
-            Keep chatting and playing games to unlock more details!
-          </p>
         </div>
 
-        {/* Profile Photo - Locked */}
-        <div className="relative">
-          <div className="aspect-[4/5] bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl overflow-hidden flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mx-auto">
-                <Lock className="w-12 h-12 text-gray-500" />
-              </div>
-              <div>
-                <p className="text-gray-700">Photo Locked</p>
-                <p className="text-gray-500">Unlock at 100% reveal</p>
-              </div>
+        {/* Basic Info */}
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-gray-900">{match.name}</h2>
+          <div className="flex items-center justify-center gap-4 text-gray-600">
+            <div className="flex items-center gap-1">
+              <Heart className="w-4 h-4 text-purple-600" />
+              <span>{match.age} years old</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <MapPin className="w-4 h-4 text-pink-600" />
+              <span>{match.location}</span>
             </div>
           </div>
         </div>
 
         {/* Compatibility */}
-        <div className="bg-white rounded-2xl border-2 border-purple-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-900">Compatibility</h3>
-            <div className="flex items-center gap-2">
-              <Star className="w-6 h-6 text-purple-600 fill-purple-600" />
-              <span className="text-purple-600">{match.compatibility}%</span>
-            </div>
+        <div className="bg-white rounded-2xl border-2 border-purple-200 p-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Star className="w-6 h-6 text-purple-600 fill-purple-600" />
+            <span className="text-xl font-bold text-purple-600">{match.compatibility}% Compatibility</span>
           </div>
           <p className="text-gray-600">
             You share {match.interests.length} common interests and have similar personality traits!
           </p>
         </div>
 
-        {/* Basic Info */}
-        <div className="space-y-4">
-          <h3 className="text-gray-900">Basic Information</h3>
-          
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-              <Heart className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-gray-500">Age</p>
-              <p className="text-gray-900">{match.age} years old</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-4">
-            <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-              <MapPin className="w-6 h-6 text-pink-600" />
-            </div>
-            <div>
-              <p className="text-gray-500">Location</p>
-              <p className="text-gray-900">{match.location}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Locked Sections */}
-        <div className="space-y-4">
-          <h3 className="text-gray-900">Unlock More</h3>
-          
-          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 flex items-center gap-4 opacity-60">
-            <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-              <Briefcase className="w-6 h-6 text-gray-500" />
-            </div>
-            <div className="flex-1">
-              <p className="text-gray-500">Occupation</p>
-              <p className="text-gray-700">Locked</p>
-            </div>
-            <Lock className="w-5 h-5 text-gray-400" />
-          </div>
-
-          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 flex items-center gap-4 opacity-60">
-            <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-gray-500" />
-            </div>
-            <div className="flex-1">
-              <p className="text-gray-500">Education</p>
-              <p className="text-gray-700">Locked</p>
-            </div>
-            <Lock className="w-5 h-5 text-gray-400" />
-          </div>
-        </div>
-
-        {/* Interests */}
-        <div className="space-y-3">
-          <h3 className="text-gray-900">Shared Interests</h3>
-          <div className="flex flex-wrap gap-2">
-            {match.interests.map((interest: string) => (
-              <span
-                key={interest}
-                className="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full border border-purple-200"
-              >
-                {interest}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Personality */}
-        <div className="space-y-3">
-          <h3 className="text-gray-900">Personality Traits</h3>
-          <div className="flex flex-wrap gap-2">
-            {match.personality.map((trait: string) => (
-              <span
-                key={trait}
-                className="px-4 py-2 bg-pink-100 text-pink-700 rounded-full border border-pink-200"
-              >
-                {trait}
-              </span>
-            ))}
-          </div>
-        </div>
-
         {/* About */}
         <div className="space-y-3">
-          <h3 className="text-gray-900">About</h3>
-          <p className="text-gray-600 leading-relaxed">{match.bio}</p>
+          <h3 className="text-gray-900 font-semibold text-lg">About</h3>
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <p className="text-gray-700 leading-relaxed">{match.bio}</p>
+          </div>
         </div>
+
+        {/* Shared Interests Dropdown */}
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => toggleSection('sharedInterests')}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <h3 className="text-gray-900 font-semibold">Shared Interests</h3>
+            {expandedSections.sharedInterests ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            )}
+          </button>
+          
+          {expandedSections.sharedInterests && (
+            <div className="p-4 bg-white border-t border-gray-200">
+              <div className="flex flex-wrap gap-2">
+                {match.interests.map((interest: string) => (
+                  <span
+                    key={interest}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full border border-purple-200"
+                  >
+                    {interest}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Personality Traits Dropdown */}
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => toggleSection('personality')}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <h3 className="text-gray-900 font-semibold">Personality Traits</h3>
+            {expandedSections.personality ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            )}
+          </button>
+          
+          {expandedSections.personality && (
+            <div className="p-4 bg-white border-t border-gray-200">
+              <div className="flex flex-wrap gap-2">
+                {match.personality.map((trait: string) => (
+                  <span
+                    key={trait}
+                    className="px-4 py-2 bg-pink-100 text-pink-700 rounded-full border border-pink-200"
+                  >
+                    {trait}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Accept/Reject Buttons - Only show for conversation requests */}
+        {match.isConversationRequest && onAccept && onReject && (
+          <div className="grid grid-cols-2 gap-4 sticky bottom-0 bg-white p-4 -mx-6 border-t border-gray-200">
+            <button 
+              onClick={onReject}
+              className="px-6 py-4 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors border border-gray-300 font-medium"
+            >
+              Reject
+            </button>
+            <button 
+              onClick={onAccept}
+              className="px-6 py-4 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium"
+            >
+              Accept
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

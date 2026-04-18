@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, X, ThumbsUp, ThumbsDown, CheckCircle } from 'lucide-react';
+import { Heart, X, ThumbsUp, ThumbsDown, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface DateFeedbackProps {
   match: any;
@@ -45,6 +45,9 @@ export function DateFeedback({ match, onClose, onSubmit }: DateFeedbackProps) {
   const [sendPersonalMessage, setSendPersonalMessage] = useState(false);
   const [showEndConversationConfirm, setShowEndConversationConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const [expandPositives, setExpandPositives] = useState(false);
+  const [expandNegatives, setExpandNegatives] = useState(false);
 
   const togglePositive = (label: string) => {
     setSelectedPositives(prev =>
@@ -189,21 +192,40 @@ export function DateFeedback({ match, onClose, onSubmit }: DateFeedbackProps) {
               <div className="space-y-3">
                 <h3 className="text-gray-900 dark:text-gray-100">What did you like about this person?</h3>
                 <p className="text-gray-600 dark:text-gray-400">Select all that apply</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {positiveOptions.map((option) => (
-                    <button
-                      key={option.label}
-                      onClick={() => togglePositive(option.label)}
-                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
-                        selectedPositives.includes(option.label)
-                          ? 'border-green-600 bg-green-50 dark:bg-green-900/30 text-green-900 dark:text-green-300'
-                          : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-green-300'
-                      }`}
-                    >
-                      <span className="mr-2">{option.emoji}</span>
-                      {option.label}
-                    </button>
-                  ))}
+                
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandPositives(!expandPositives)}
+                    className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="font-medium text-gray-900 dark:text-gray-100">Positive Feedback Options</span>
+                    {expandPositives ? (
+                      <ChevronUp className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    )}
+                  </button>
+                  
+                  {expandPositives && (
+                    <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                      <div className="grid grid-cols-2 gap-2">
+                        {positiveOptions.map((option) => (
+                          <button
+                            key={option.label}
+                            onClick={() => togglePositive(option.label)}
+                            className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                              selectedPositives.includes(option.label)
+                                ? 'border-green-600 bg-green-50 dark:bg-green-900/30 text-green-900 dark:text-green-300'
+                                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-green-300'
+                            }`}
+                          >
+                            <span className="mr-2">{option.emoji}</span>
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -312,21 +334,40 @@ export function DateFeedback({ match, onClose, onSubmit }: DateFeedbackProps) {
               <div className="space-y-3">
                 <h3 className="text-gray-900 dark:text-gray-100">What went wrong?</h3>
                 <p className="text-gray-600 dark:text-gray-400">This helps us improve your future matches (optional)</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {negativeOptions.map((option) => (
-                    <button
-                      key={option.label}
-                      onClick={() => toggleNegative(option.label)}
-                      className={`p-3 rounded-lg border-2 text-left transition-colors ${
-                        selectedNegatives.includes(option.label)
-                          ? 'border-red-600 bg-red-50 dark:bg-red-900/30 text-red-900 dark:text-red-300'
-                          : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-red-300'
-                      }`}
-                    >
-                      <span className="mr-2">{option.emoji}</span>
-                      {option.label}
-                    </button>
-                  ))}
+                
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandNegatives(!expandNegatives)}
+                    className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="font-medium text-gray-900 dark:text-gray-100">Negative Feedback Options</span>
+                    {expandNegatives ? (
+                      <ChevronUp className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    )}
+                  </button>
+                  
+                  {expandNegatives && (
+                    <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                      <div className="grid grid-cols-2 gap-2">
+                        {negativeOptions.map((option) => (
+                          <button
+                            key={option.label}
+                            onClick={() => toggleNegative(option.label)}
+                            className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                              selectedNegatives.includes(option.label)
+                                ? 'border-red-600 bg-red-50 dark:bg-red-900/30 text-red-900 dark:text-red-300'
+                                : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-red-300'
+                            }`}
+                          >
+                            <span className="mr-2">{option.emoji}</span>
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="mt-4">

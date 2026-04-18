@@ -76,7 +76,18 @@ export default function App() {
       {currentScreen === 'dashboard' && <MainDashboard onNavigate={navigateTo} />}
       {currentScreen === 'chat' && <ChatScreen match={selectedMatch} onBack={() => navigateTo('dashboard')} onNavigate={navigateTo} onSaveToFriendsList={handleSaveToFriendsList} />}
       {currentScreen === 'voice' && <VoiceChatScreen match={selectedMatch} onBack={() => navigateTo('chat', selectedMatch)} />}
-      {currentScreen === 'profile' && <ProfileReveal match={selectedMatch} onBack={() => navigateTo('chat', selectedMatch)} />}
+      {currentScreen === 'profile' && <ProfileReveal 
+        match={selectedMatch} 
+        onBack={() => navigateTo('dashboard')} 
+        onAccept={() => {
+          // Handle accepting conversation request - navigate to chat
+          navigateTo('chat', { ...selectedMatch, isConversationRequest: false });
+        }}
+        onReject={() => {
+          // Handle rejecting conversation request - go back to dashboard
+          navigateTo('dashboard');
+        }}
+      />}
       {currentScreen === 'dateplanner' && <DatePlanner match={selectedMatch} onBack={() => navigateTo('chat', selectedMatch)} />}
       {currentScreen === 'feedback' && <DateFeedback match={selectedMatch} onClose={() => navigateTo('dashboard')} onSubmit={(feedback) => console.log('Feedback:', feedback)} />}
       {currentScreen === 'conversationSettings' && <ConversationSettings match={selectedMatch} onBack={() => navigateTo('chat', selectedMatch)} onDeleteConversation={() => navigateTo('dashboard')} onSaveToFriendsList={handleSaveToFriendsList} />}

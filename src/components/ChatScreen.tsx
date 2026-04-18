@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Phone, MoreVertical, Send, Mic, Gamepad2, MapPin, Sparkles, Lock, Unlock, Crown } from 'lucide-react';
+import { ArrowLeft, Phone, MoreVertical, Send, Mic, Gamepad2, MapPin, Sparkles, Lock, Unlock, Crown, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Screen } from '../App';
 
 interface Message {
@@ -67,6 +67,8 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
     activity: 'Dinner Date 🍝'
   });
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [expandDateBanner, setExpandDateBanner] = useState(false);
+  const [isPremium, setIsPremium] = useState(false); // Mock state for premium status
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -113,9 +115,9 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
   const canSendVoice = messageCount >= 10;
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 px-4 py-3 shrink-0 z-20">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <button onClick={onBack} className="text-gray-600 hover:text-gray-900 flex-shrink-0">
@@ -156,78 +158,72 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
         </div>
       </div>
 
-      {/* Reveal Status Banner */}
-      {revealLevel < 2 && (
-        <div className="bg-purple-50 border-b border-purple-100 px-4 py-3 sticky top-[61px] z-10">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {revealLevel === 0 ? (
-                <Lock className="w-5 h-5 text-purple-600" />
-              ) : (
-                <Unlock className="w-5 h-5 text-purple-600" />
-              )}
-              <div>
-                <p className="text-purple-900">
-                  {revealLevel === 0 ? 'Identity Hidden' : 'Partially Revealed'}
-                </p>
-                <p className="text-purple-600">
-                  {revealLevel === 0 
-                    ? 'Build trust before revealing more'
-                    : 'One more step to full reveal!'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleReveal}
-              className="bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-700 transition-colors"
-            >
-              Reveal More
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Scheduled Date Banner */}
+      {/* Scheduled Date Banner - Collapsible */}
       {scheduledDate && (
-        <div className="bg-gradient-to-r from-pink-50 to-purple-50 border-b border-pink-200 px-4 py-4 sticky top-[61px] z-10">
+        <div className="bg-gradient-to-r from-pink-50 to-purple-50 border-b border-pink-200 px-4 py-2 shrink-0 z-10 transition-all duration-300">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 flex-1">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-6 h-6 text-white" />
+            {!expandDateBanner ? (
+              <button 
+                onClick={() => setExpandDateBanner(true)}
+                className="w-full flex items-center justify-between py-1"
+              >
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-pink-600" />
+                  <span className="font-semibold text-pink-900 text-sm">Your Upcoming Date!</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-pink-900 font-semibold mb-1">📅 Upcoming Date</p>
-                  <p className="text-pink-700">{scheduledDate.activity}</p>
-                  <p className="text-pink-600">{scheduledDate.date} at {scheduledDate.time}</p>
-                  <p className="text-pink-600">📍 {scheduledDate.location}</p>
+                <ChevronDown className="w-4 h-4 text-pink-600" />
+              </button>
+            ) : (
+              <div>
+                 <button 
+                  onClick={() => setExpandDateBanner(false)}
+                  className="w-full flex items-center justify-between mb-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-pink-600" />
+                    <span className="font-semibold text-pink-900 text-sm">Your Upcoming Date!</span>
+                  </div>
+                  <ChevronUp className="w-4 h-4 text-pink-600" />
+                </button>
+                <div className="flex items-start justify-between gap-4 pb-2 animate-in slide-in-from-top-2">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-pink-900 font-semibold mb-1">📅 Upcoming Date</p>
+                      <p className="text-pink-700">{scheduledDate.activity}</p>
+                      <p className="text-pink-600">{scheduledDate.date} at {scheduledDate.time}</p>
+                      <p className="text-pink-600">📍 {scheduledDate.location}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => setShowRescheduleModal(true)}
+                      className="bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-700 transition-colors whitespace-nowrap text-sm"
+                    >
+                      Reschedule
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to cancel this date?')) {
+                          setScheduledDate(null);
+                        }
+                      }}
+                      className="bg-white text-pink-700 border-2 border-pink-300 px-4 py-2 rounded-full hover:bg-pink-50 transition-colors whitespace-nowrap text-sm"
+                    >
+                      Cancel Date
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => setShowRescheduleModal(true)}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-700 transition-colors whitespace-nowrap text-sm"
-                >
-                  Reschedule
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('Are you sure you want to cancel this date?')) {
-                      setScheduledDate(null);
-                    }
-                  }}
-                  className="bg-white text-pink-700 border-2 border-pink-300 px-4 py-2 rounded-full hover:bg-pink-50 transition-colors whitespace-nowrap text-sm"
-                >
-                  Cancel Date
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50 pb-[10px]">
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.map((message) => (
             <div
@@ -240,17 +236,17 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
                     ? 'bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 text-purple-900 px-4 py-3 rounded-2xl w-full max-w-md text-center'
                     : message.sender === 'user'
                     ? 'bg-purple-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm max-w-[70%]'
-                    : 'bg-gray-100 text-gray-900 px-4 py-3 rounded-2xl rounded-tl-sm max-w-[70%]'
+                    : 'bg-white border border-gray-200 text-gray-900 px-4 py-3 rounded-2xl rounded-tl-sm max-w-[70%]'
                 }`}
               >
                 <p>{message.text}</p>
                 <p
-                  className={`mt-1 ${
+                  className={`mt-1 text-xs ${
                     message.sender === 'system'
                       ? 'text-purple-600'
                       : message.sender === 'user'
                       ? 'text-purple-200'
-                      : 'text-gray-500'
+                      : 'text-gray-400'
                   }`}
                 >
                   {message.timestamp}
@@ -258,8 +254,181 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
               </div>
             </div>
           ))}
+          <div className="h-4" /> {/* Spacer */}
         </div>
       </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white border-t border-gray-200 px-4 py-2 shrink-0">
+        <div className="max-w-4xl mx-auto flex gap-2 overflow-x-auto no-scrollbar">
+          <button 
+            onClick={() => setShowIcebreakers(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap text-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span className="text-gray-700">Icebreaker</span>
+          </button>
+          <button 
+            onClick={() => setShowGames(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap text-sm"
+          >
+            <Gamepad2 className="w-3.5 h-3.5 text-purple-600" />
+            <span className="text-gray-700">Play Game</span>
+          </button>
+          <button 
+            onClick={() => onNavigate('dateplanner', match)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap text-sm"
+          >
+            <MapPin className="w-3.5 h-3.5 text-pink-600" />
+            <span className="text-gray-700">Date Ideas</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="bg-white border-t border-gray-200 px-4 py-3 shrink-0">
+        <div className="max-w-4xl mx-auto flex items-end gap-2">
+           <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 flex items-center min-h-[44px]">
+             <input
+               type="text"
+               value={inputValue}
+               onChange={(e) => setInputValue(e.target.value)}
+               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+               onFocus={() => setShowKeyboard(true)}
+               onBlur={() => {
+                  // Keep keyboard open for a moment to allow button clicks
+                  // In a real mobile app, the virtual keyboard handles this
+                  // For this simulation, we'll rely on the user manually closing or typing
+               }}
+               placeholder="Type a message..."
+               className="flex-1 bg-transparent outline-none text-gray-900 placeholder-gray-500 text-base"
+             />
+           </div>
+           
+           {inputValue.trim() ? (
+             <button
+               onClick={handleSend}
+               className="w-11 h-11 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors shadow-sm"
+             >
+               <Send className="w-5 h-5 text-white" />
+             </button>
+           ) : (
+             <button 
+               disabled={!canSendVoice}
+               className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${
+                 canSendVoice 
+                   ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' 
+                   : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+               }`}
+             >
+               <Mic className="w-6 h-6" />
+             </button>
+           )}
+        </div>
+      </div>
+
+      {/* Simulated Keyboard & Ad Bar Container */}
+      {showKeyboard && (
+        <div className="shrink-0 bg-gray-100 border-t border-gray-300">
+           {/* Keyboard Layout */}
+           <div className="p-1 pb-2 bg-gray-200 select-none">
+              {/* Prediction Bar */}
+              <div className="flex justify-center gap-4 py-2 text-gray-600 text-sm border-b border-gray-300 mb-1">
+                 <span>I</span>
+                 <span>Hello</span>
+                 <span>How are you</span>
+              </div>
+              
+              <div className="space-y-2 px-1">
+                {/* Row 1 */}
+                <div className="flex gap-1.5 justify-center">
+                  {['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'].map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setInputValue(inputValue + key.toLowerCase())}
+                      className="w-[8.5%] h-11 bg-white rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-200 flex items-center justify-center text-xl font-medium text-gray-900"
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Row 2 */}
+                <div className="flex gap-1.5 justify-center px-4">
+                  {['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'].map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setInputValue(inputValue + key.toLowerCase())}
+                      className="w-[8.5%] h-11 bg-white rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-200 flex items-center justify-center text-xl font-medium text-gray-900"
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Row 3 */}
+                <div className="flex gap-1.5 justify-center">
+                  <button
+                    onClick={() => {
+                        const words = inputValue.split(' ');
+                        const newText = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        setInputValue(newText);
+                    }}
+                    className="w-[12%] h-11 bg-gray-300 rounded-lg shadow-sm hover:bg-gray-400 flex items-center justify-center"
+                  >
+                    ⇧
+                  </button>
+                  {['Z', 'X', 'C', 'V', 'B', 'N', 'M'].map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setInputValue(inputValue + key.toLowerCase())}
+                      className="w-[8.5%] h-11 bg-white rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-200 flex items-center justify-center text-xl font-medium text-gray-900"
+                    >
+                      {key}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setInputValue(inputValue.slice(0, -1))}
+                    className="w-[12%] h-11 bg-gray-300 rounded-lg shadow-sm hover:bg-gray-400 flex items-center justify-center"
+                  >
+                    ⌫
+                  </button>
+                </div>
+                
+                {/* Row 4 */}
+                <div className="flex gap-1.5 justify-center mt-2 px-1">
+                  <button className="w-[12%] h-11 bg-gray-300 rounded-lg shadow-sm text-sm font-medium">123</button>
+                  <button className="w-[12%] h-11 bg-gray-300 rounded-lg shadow-sm text-xl">😊</button>
+                  <button
+                    onClick={() => setInputValue(inputValue + ' ')}
+                    className="flex-1 h-11 bg-white rounded-lg shadow-sm hover:bg-gray-50 active:bg-gray-200 text-sm text-gray-400 font-medium"
+                  >
+                    space
+                  </button>
+                  <button
+                    onClick={() => setShowKeyboard(false)}
+                    className="w-[20%] h-11 bg-blue-500 text-white rounded-lg shadow-sm hover:bg-blue-600 active:bg-blue-700 font-medium"
+                  >
+                    return
+                  </button>
+                </div>
+              </div>
+           </div>
+           
+           {/* Ad Bar (Only if not premium) */}
+           {!isPremium && (
+             <div className="h-12 bg-gray-800 text-white flex items-center justify-between px-4 text-xs">
+                <span>Ad: Meet people near you!</span>
+                <button 
+                  onClick={() => setIsPremium(true)} 
+                  className="bg-white/20 px-2 py-1 rounded hover:bg-white/30 transition-colors"
+                >
+                  Remove Ads
+                </button>
+             </div>
+           )}
+        </div>
+      )}
 
       {/* Icebreaker Modal */}
       {showIcebreakers && (
@@ -364,7 +533,6 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
                 </button>
                 <button
                   onClick={() => {
-                    // In a real app, this would save the rescheduled date
                     alert('Reschedule request sent!');
                     setShowRescheduleModal(false);
                   }}
@@ -373,137 +541,6 @@ export function ChatScreen({ match, onBack, onNavigate, onSaveToFriendsList }: C
                   Send Request
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="bg-gray-50 border-t border-gray-200 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex gap-2 overflow-x-auto">
-          <button 
-            onClick={() => setShowIcebreakers(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors whitespace-nowrap"
-          >
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            <span className="text-gray-700">Icebreaker</span>
-          </button>
-          <button 
-            onClick={() => setShowGames(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors whitespace-nowrap"
-          >
-            <Gamepad2 className="w-4 h-4 text-purple-600" />
-            <span className="text-gray-700">Play Game</span>
-          </button>
-          <button 
-            onClick={() => onNavigate('dateplanner', match)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors whitespace-nowrap"
-          >
-            <MapPin className="w-4 h-4 text-pink-600" />
-            <span className="text-gray-700">Date Ideas</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="bg-white border-t border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <div className="flex-1 bg-gray-100 rounded-full px-4 py-3 flex items-center gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              onFocus={() => setShowKeyboard(true)}
-              onBlur={() => setTimeout(() => setShowKeyboard(false), 100)}
-              placeholder="Type a message..."
-              className="flex-1 bg-transparent outline-none text-gray-900 placeholder-gray-500"
-            />
-          </div>
-          {inputValue.trim() ? (
-            <button
-              onClick={handleSend}
-              className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors"
-            >
-              <Send className="w-5 h-5 text-white" />
-            </button>
-          ) : (
-            <button 
-              disabled={!canSendVoice}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                canSendVoice 
-                  ? 'text-gray-600 hover:bg-gray-100' 
-                  : 'text-gray-300 cursor-not-allowed'
-              }`}
-              title={!canSendVoice ? 'Exchange 10 messages to unlock voice messages' : 'Send voice message'}
-            >
-              <Mic className="w-6 h-6" />
-            </button>
-          )}
-        </div>
-        {!canSendVoice && (
-          <p className="text-center text-gray-500 mt-2">
-            💬 Send {10 - messageCount} more messages to unlock voice features
-          </p>
-        )}
-      </div>
-
-      {/* Mobile Keyboard Simulation */}
-      {showKeyboard && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-200 border-t-2 border-gray-300 z-30 transition-transform duration-300 ease-out">
-          <div className="p-2 space-y-2">
-            <div className="flex gap-1">
-              {['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'].map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setInputValue(inputValue + key.toLowerCase())}
-                  className="flex-1 bg-white rounded py-3 shadow-sm hover:bg-gray-100 transition-colors"
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1 px-4">
-              {['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'].map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setInputValue(inputValue + key.toLowerCase())}
-                  className="flex-1 bg-white rounded py-3 shadow-sm hover:bg-gray-100 transition-colors"
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setInputValue(inputValue.slice(0, -1))}
-                className="flex-[1.5] bg-white rounded py-3 shadow-sm hover:bg-gray-100 transition-colors"
-              >
-                ⌫
-              </button>
-              {['Z', 'X', 'C', 'V', 'B', 'N', 'M'].map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setInputValue(inputValue + key.toLowerCase())}
-                  className="flex-1 bg-white rounded py-3 shadow-sm hover:bg-gray-100 transition-colors"
-                >
-                  {key}
-                </button>
-              ))}
-              <button
-                onClick={() => setInputValue(inputValue + ' ')}
-                className="flex-[2] bg-white rounded py-3 shadow-sm hover:bg-gray-100 transition-colors"
-              >
-                space
-              </button>
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setShowKeyboard(false)}
-                className="flex-1 bg-purple-600 text-white rounded py-3 shadow-sm hover:bg-purple-700 transition-colors"
-              >
-                Done
-              </button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react';
 import { AnimatedLogo } from './AnimatedLogo';
 
 interface LoginScreenProps {
@@ -12,6 +12,12 @@ export function LoginScreen({ onComplete, onSignUp }: LoginScreenProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showStatusSelection, setShowStatusSelection] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    document.documentElement.classList.toggle('dark');
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +33,23 @@ export function LoginScreen({ onComplete, onSignUp }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 flex flex-col p-6">
-      {/* Skip Button - Top Right */}
-      <div className="flex justify-end mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-pink-500 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col p-6 transition-colors">
+      {/* Skip Button and Dark Mode Toggle - Top Right */}
+      <div className="flex justify-between items-center mb-4">
+        {/* Dark Mode Toggle - Top Left */}
+        <button
+          onClick={toggleDarkMode}
+          className="relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition-colors bg-white/20 hover:bg-white/30"
+        >
+          <span
+            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform flex items-center justify-center ${
+              isDarkMode ? 'translate-x-7' : 'translate-x-1'
+            }`}
+          >
+            {isDarkMode ? <Moon className="w-4 h-4 text-gray-900" /> : <Sun className="w-4 h-4 text-yellow-500" />}
+          </span>
+        </button>
+
         <button
           onClick={onComplete}
           className="px-6 py-2 text-white hover:bg-white/20 rounded-full transition-colors"

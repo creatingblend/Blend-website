@@ -2,6 +2,7 @@ import { X, ChevronDown, ChevronUp, Settings, Sliders, Pencil, HelpCircle, Shiel
 import { useState, useEffect } from 'react';
 import { AvatarBuilder, AvatarConfig } from './AvatarBuilder';
 import { SignUpFlow } from './SignUpFlow';
+import { calculateProfileCompletion } from '../utils/profileCompletion';
 
 interface UserProfileProps {
   onClose: () => void;
@@ -60,7 +61,7 @@ const mockUserProfile = {
 export function UserProfile({ onClose, onOpenSecurity, onOpenFilters }: UserProfileProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     identity: false,
-    interests: true,
+    interests: false,
     whatIWant: false,
     filters: false,
     account: false
@@ -90,10 +91,22 @@ export function UserProfile({ onClose, onOpenSecurity, onOpenFilters }: UserProf
   };
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setExpandedSections(prev => {
+      // Create a new state where all sections are closed
+      const newState = Object.keys(prev).reduce((acc, key) => {
+        acc[key] = false;
+        return acc;
+      }, {} as Record<string, boolean>);
+      
+      // Toggle the target section
+      // If it was open (true), it becomes closed (false) because all are set to false above and we don't change it
+      // If it was closed (false), we set it to true
+      if (!prev[section]) {
+        newState[section] = true;
+      }
+      
+      return newState;
+    });
   };
 
   const handleSaveAvatar = (avatar: AvatarConfig) => {
@@ -166,6 +179,105 @@ export function UserProfile({ onClose, onOpenSecurity, onOpenFilters }: UserProf
             </div>
             <p className="text-gray-700 dark:text-gray-300 max-w-md mx-auto">{mockUserProfile.bio}</p>
           </div>
+
+          {/* Profile Completion Section */}
+          {(() => {
+            const mockFormData = {
+              name: 'You',
+              about: mockUserProfile.bio,
+              age: mockUserProfile.age,
+              gender: mockUserProfile.gender,
+              orientation: ['Men'],
+              race: 'White',
+              military: mockUserProfile.military,
+              pronouns: mockUserProfile.pronouns,
+              zodiacSign: mockUserProfile.zodiacSign,
+              languages: [{ language: 'English' }],
+              heightFt: 5 as number | '',
+              heightIn: 6 as number | '',
+              weightLbs: 140 as number | '',
+              exerciseHabits: 'I exercise regularly',
+              religion: 'Christian',
+              politics: ['Moderate'],
+              racePreference: ['No Preference'],
+              relationshipGoal: ['Long-term relationship'],
+              marriageDesire: '',
+              childrenPreference: ['Want someday'],
+              heightPreference: [] as string[],
+              bodyTypePreference: [] as string[],
+              hobbies: mockUserProfile.interests,
+              favoriteFoods: mockUserProfile.favoriteFoods,
+              musicPerforming: [] as string[],
+              musicListening: mockUserProfile.music,
+              moviesTV: mockUserProfile.interests['Movies & TV'] || [],
+              personality: mockUserProfile.personality,
+              dealbreakers: mockUserProfile.dealbreakers,
+              desiresActivities: mockUserProfile.desiresActivities,
+              desiresTraits: mockUserProfile.desiresTraits
+            };
+            
+            const completion = calculateProfileCompletion(mockFormData);
+            
+            return (
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-700 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-purple-900 dark:text-purple-100 font-semibold">Profile Completion</h4>
+                  <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{completion.percentage}%</span>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-3 mb-3 overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${completion.percentage}%` }}
+                  />
+                </div>
+                
+                <p className="text-purple-700 dark:text-purple-300 text-sm mb-2">
+                  {completion.percentage < 100 ? (
+                    <>
+                      <strong>💡 Tip:</strong> You're more likely to have meaningful matches if you complete your profile!
+                    </>
+                  ) : (
+                    <>
+                      <strong>🎉 Amazing!</strong> Your profile is complete!
+                    </>
+                  )}
+                </p>
+                
+                {completion.percentage < 100 && (
+                  <details className="text-sm text-purple-600 dark:text-purple-400 cursor-pointer">
+                    <summary className="hover:underline">See what's missing</summary>
+                    <div className="mt-2 space-y-1">
+                      {completion.missingMandatory.length > 0 && (
+                        <div className="pl-3">
+                          <p className="font-semibold text-red-600 dark:text-red-400">Required:</p>
+                          <ul className="list-disc list-inside pl-2">
+                            {completion.missingMandatory.map(field => (
+                              <li key={field}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {completion.missingOptional.length > 0 && (
+                        <div className="pl-3">
+                          <p className="font-semibold">Optional:</p>
+                          <ul className="list-disc list-inside pl-2">
+                            {completion.missingOptional.slice(0, 5).map(field => (
+                              <li key={field}>{field}</li>
+                            ))}
+                            {completion.missingOptional.length > 5 && (
+                              <li>...and {completion.missingOptional.length - 5} more</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Identity Section */}
           <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">

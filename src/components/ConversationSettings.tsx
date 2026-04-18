@@ -9,6 +9,8 @@ interface ConversationSettingsProps {
 }
 
 export function ConversationSettings({ match, onBack, onDeleteConversation, onSaveToFriendsList }: ConversationSettingsProps) {
+  const [showStayFriendsModal, setShowStayFriendsModal] = useState(false);
+  const [showFriendRequestConfirm, setShowFriendRequestConfirm] = useState(false);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [showFeedbackStep, setShowFeedbackStep] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
@@ -21,6 +23,24 @@ export function ConversationSettings({ match, onBack, onDeleteConversation, onSa
     if (onSaveToFriendsList) {
       onSaveToFriendsList(match.id);
     }
+  };
+
+  const handleCloseConversation = () => {
+    setShowStayFriendsModal(true);
+  };
+
+  const handleStayFriends = () => {
+    setShowStayFriendsModal(false);
+    setShowFriendRequestConfirm(true);
+    // In a real app, this would send the request to the other user
+    if (onSaveToFriendsList) {
+       onSaveToFriendsList(match.id);
+    }
+  };
+
+  const handleRejectFriends = () => {
+    setShowStayFriendsModal(false);
+    setShowFeedbackStep(true);
   };
 
   // Add more sample interests for demonstration
@@ -205,13 +225,74 @@ export function ConversationSettings({ match, onBack, onDeleteConversation, onSa
             Once you close this conversation, it cannot be recovered. All messages and content will be permanently deleted.
           </p>
           <button
-            onClick={() => setShowFeedbackStep(true)}
+            onClick={handleCloseConversation}
             className="w-full bg-red-600 dark:bg-red-700 text-white px-6 py-3 rounded-full hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
           >
             Close Conversation
           </button>
         </div>
       </div>
+
+      {/* Stay Friends Modal */}
+      {showStayFriendsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">End Conversation?</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Would you like to stay friends with this person? Or fully end the conversation?
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleStayFriends}
+                className="w-full p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl border border-green-200 dark:border-green-800 hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Users className="w-5 h-5" />
+                Stay Friends
+              </button>
+              
+              <button
+                onClick={handleRejectFriends}
+                className="w-full p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-800 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <X className="w-5 h-5" />
+                Fully End Conversation
+              </button>
+
+              <button
+                onClick={() => setShowStayFriendsModal(false)}
+                className="w-full p-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Friend Request Sent Confirmation */}
+      {showFriendRequestConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Friend Request Sent!</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              We've let {match.name} know you'd like to stay friends. If they accept, they'll appear in your Friends List.
+            </p>
+            <button
+              onClick={() => {
+                setShowFriendRequestConfirm(false);
+                onBack(); // Go back to chat or dashboard
+              }}
+              className="w-full py-3 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Feedback Modal */}
       {showFeedbackStep && !showDeleteWarning && (
